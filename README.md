@@ -46,6 +46,11 @@ Provides DAO for every Model, as well as generates routing objects for every Mod
 
   AccountCategory = require './accountCategory'
 
+  # model's attributes definition does not reflect the database tables
+  # it is necessary to create own knex migration files in order to create corresponding tables
+
+  # this package assumes that database fields are 'snake_case', but attributes
+  # used within the Hapi based project are 'camelCase' - stick to that concept
 
   userAttributes =
     id: new BaseField(
