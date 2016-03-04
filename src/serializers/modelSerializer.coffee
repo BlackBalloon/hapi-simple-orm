@@ -13,7 +13,6 @@ PrimaryKeyRelatedSerializer = require './primaryKeyRelatedSerializer'
 FieldRelatedSerializer      = require './fieldRelatedSerializer'
 Serializer                  = require './serializer'
 
-debug = require('debug')('model')
 
 # object which specifies which method should be used
 # in order to retrieve value for current field
