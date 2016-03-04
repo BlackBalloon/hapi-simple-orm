@@ -2,7 +2,7 @@ Hapi.js simple ORM
 ==================
 
 Small library used to reflect database tables in Hapi based applications. It provides DAO layer, as well as Model's instances serialization for routing.
-It also can generate routing objects, that can be passed to `server.route()` method, for every model (basic operations GET, PUT/PATCH, POST, DELETE).
+It also can generate routing objects, that can be passed to `server.route()` method, for every model (basic operations GET, PUT, POST, DELETE).
 
 ## Installation
 
@@ -39,10 +39,12 @@ It also can generate routing objects, that can be passed to `server.route()` met
   Then, depending on the `NODE_ENV`, proper configuration is used afterwards, the package is ready to use.
 
   ```coffee
-  BaseModel = require('hapi-simple-orm').model
-  BaseField = require('hapi-simple-orm').fields.baseField
+  BaseModel     = require('hapi-simple-orm').models.BaseModel
 
-  Joi       = require 'joi'
+  BaseField     = require('hapi-simple-orm').fields.BaseField
+  ForeignKey    = require('hapi-simple-orm').fields.ForeignKey
+
+  Joi           = require 'joi'
 
   AccountCategory = require './accountCategory'
 
@@ -74,7 +76,7 @@ It also can generate routing objects, that can be passed to `server.route()` met
 
   class User extends baseModel
 
-    @include(userAttributes);
+    @include userAttributes
 
     @metadata =
       tableName: 'users'
@@ -152,6 +154,47 @@ It also can generate routing objects, that can be passed to `server.route()` met
   .catch (error) ->
     throw error
   ```
+
+## Model views
+
+  ORM provides also the possibility to generate routing objects that can be passed to `server.route()` method of Hapi. This creates default handlers for basic HTTP operations like GET, PUT, POST, DELETE. Below is usage example:
+
+  ```coffee
+  ModelView       = require('hapi-simple-orm').views.ModelView
+
+  User            = require './../models/user'
+  UserSerializer  = require './../serializers/user'
+
+  class UserModelView extends ModelView
+
+    config:
+      model: User
+      tag: 'auth'
+      serializer: UserSerializer
+      errorMessages:
+        notFound: 'Specified user does not exit'
+
+
+  module.exports = UserModelView
+
+  # afterwards, the 'UserModelView' can be used in such a way:
+  UserModelView   = require './../views/user'
+
+  userRoutes = (server, options, next) ->
+
+    userModelView = new UserModelView server, options
+
+    server.route userModelView.list()   # GET /users
+    server.route userModelView.get()    # GET /users/{id}
+    server.route userModelView.create() # POST /users
+    server.route userModelView.update() # PUT /users/{id}
+    server.route userModelView.delete() # DELETE /users/{id}
+
+    next()
+
+  exports.register = userRoutes
+
+
 ## Tests
   TODO
 
