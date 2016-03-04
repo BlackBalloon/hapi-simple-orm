@@ -6,21 +6,21 @@ Provides DAO for every Model, as well as generates routing objects for every Mod
 
 ## Installation
 
-  npm install hapi-simple-orm --save
+  `npm install hapi-simple-orm --save`
 
 ## Usage of the ORM
 
-  first install required dependencies with `npm install`
+  First install required dependencies with `npm install`
 
-  This package requires 'knex' module. In order to provide integration with the database, it is necessary to create
-  'knexfile.coffee' in root folder of the project which would look as follows:
+  This package requires `knex` module. In order to provide integration with the database, it is necessary to create
+  `knexfile.coffee` in root folder of the project which would look as follows:
 
   ```coffee
   module.exports =
     development:
       client: 'pg'
       connection:
-        database: 'blumed_test'
+        database: 'database_dev'
         user:     'postgres'
         password: 'postgres'
       migrations:
@@ -29,14 +29,14 @@ Provides DAO for every Model, as well as generates routing objects for every Mod
     test:
       client: 'pg'
       connection:
-        database: 'blumed_test'
+        database: 'database_test'
         user:     'postgres'
         password: 'postgres'
       migrations:
         tableName: 'migrations'
   ```
 
-  Then, depending on the NODE_ENV, proper configuration is used afterwards, the package is ready to use.
+  Then, depending on the `NODE_ENV`, proper configuration is used afterwards, the package is ready to use.
 
   ```coffee
   BaseModel = require('hapi-simple-orm').model
@@ -107,13 +107,13 @@ Provides DAO for every Model, as well as generates routing objects for every Mod
 
 ## Serializers based on Models
 
-  It is possible to use serializers in order to serialize the payload when sending model's instances via REST it is possible to define nested relations with use of 'ModelSerializer'
+  It is possible to use serializers in order to serialize the payload when sending model's instances via REST. It is possible to define nested relations with use of `ModelSerializer`
 
   ```coffee
-  ModelSerializer = require('hapi-simple-orm').serializers.modelSerializer
+  ModelSerializer           = require('hapi-simple-orm').serializers.modelSerializer
 
-  User            = require './../models/user'
-  AccountCategory = require './accountCategory'
+  User                      = require './../models/user'
+  AccountCategorySerializer = require './accountCategory'
 
   class UserSerializer extends ModelSerializer
 
@@ -126,6 +126,25 @@ Provides DAO for every Model, as well as generates routing objects for every Mod
       ]
 
   module.exports = UserSerializer
+
+  # then it is possible to combine DAO with serializers:
+
+  User.objects().getById({ val: 1 }).then (user) ->
+    serializer = new UserSerializer data: user
+    serializer.getData().then (serializerData) ->
+      console.log serializerData
+      ###
+      {
+        id: 1
+        username: 'tom'
+        accountCategory: {
+          id: 1
+          name: 'admin'
+        }
+      }
+      ###
+  .catch (error) ->
+    throw error
   ```
 
 ## Release History
