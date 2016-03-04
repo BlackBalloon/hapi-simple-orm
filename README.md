@@ -64,7 +64,8 @@ Provides DAO for every Model, as well as generates routing objects for every Mod
       name: 'username'
     )
 
-    category: new ForeignKey(
+    # in case of ForeignKey it is recommended to use 'camelCase' version of referenced Model's name
+    accountCategory: new ForeignKey(
       referenceModel: AccountCategory
       required: true
       errorMessages:
