@@ -1,8 +1,8 @@
 Hapi.js simple ORM
 ==================
 
-Small library used reflect database tables in Hapi.js based applications.
-Provides DAO for every Model, as well as generates routing objects for every Model.
+Small library used to reflect database tables in Hapi based applications. It provides DAO layer, as well as Model's instances serialization for routing.
+It also can generate routing objects, that can be passed to `server.route()` method, for every model (basic operations GET, PUT/PATCH, POST, DELETE).
 
 ## Installation
 
@@ -13,7 +13,7 @@ Provides DAO for every Model, as well as generates routing objects for every Mod
   First install required dependencies with `npm install`
 
   This package requires `knex` module. In order to provide integration with the database, it is necessary to create
-  `knexfile.coffee` in root folder of the project which would look as follows:
+  `knexfile.js/coffee` in root folder of the project which would look as follows:
 
   ```coffee
   module.exports =
@@ -152,6 +152,8 @@ Provides DAO for every Model, as well as generates routing objects for every Mod
   .catch (error) ->
     throw error
   ```
+## Tests
+  TODO
 
 ## Release History
 
