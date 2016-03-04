@@ -1,0 +1,19 @@
+{
+  "name": "hapi-simple-orm",
+  "version": "0.0.1",
+  "description": "Simple ORM for node based applications.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Piotr Bienias <piotr.bienias@blackballoon.pl> (http://www.blackballoon.pl)",
+  "license": "MIT",
+  "dependencies": {
+    "bluebird": "^3.3.3",
+    "boom": "^3.1.2",
+    "fs": "0.0.2",
+    "joi": "^8.0.4",
+    "knex": "^0.10.0",
+    "underscore": "^1.8.3"
+  }
+}
