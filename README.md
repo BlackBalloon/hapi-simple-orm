@@ -193,7 +193,7 @@ It also can generate routing objects, that can be passed to `server.route()` met
     next()
 
   exports.register = userRoutes
-
+  ```
 
 ## Tests
   TODO
