@@ -15,5 +15,8 @@
     "joi": "^8.0.4",
     "knex": "^0.10.0",
     "underscore": "^1.8.3"
+  },
+  "devDependencies": {
+    "coffee-script": "^1.10.0"
   }
 }
