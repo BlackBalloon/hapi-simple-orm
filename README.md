@@ -66,7 +66,8 @@ It also can generate routing objects, that can be passed to `server.route()` met
       name: 'username'
     )
 
-    # in case of ForeignKey it is recommended to use 'camelCase' version of referenced Model's name
+    # if you want to ForeignKey field to be named differently than referenceModel name
+    # you need to specify the 'name' attribute to the ForeignKey constructor
     accountCategory: new ForeignKey(
       referenceModel: AccountCategory
       required: true
@@ -107,8 +108,23 @@ It also can generate routing objects, that can be passed to `server.route()` met
   data =
     username: 'tom'
 
+  # direct attribute is set to 'true' because '.create()' method is called
+  # directly from the User's model DAO
   User.objects().create({ payload: data, direct: true }).then (user) ->
     console.log user
+  .catch (error) ->
+    throw error
+
+  # it can also be done in such a way:
+  user = new User data
+  user.save().then (result) ->
+    console.log result
+    ###
+    {
+      id: 1
+      username: 'tom'
+    }
+    ###
   .catch (error) ->
     throw error
   ```
