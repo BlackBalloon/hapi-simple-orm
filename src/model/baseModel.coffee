@@ -18,6 +18,35 @@ moduleKeywords = ['extended', 'included']
 
 class BaseModel
 
+  @extend: (obj) ->
+    # add 'metadata' attribute to the model and apply parameters to it
+    @metadata = {}
+    for key, value of obj when key not in moduleKeywords
+      @metadata[key] = value
+
+    # default 'model' value is name of the Class e.g. AccountCategory
+    if not @metadata.model?
+      @metadata.model = @name
+
+    # default 'singular' value is snake_case of Class e.g. account_category
+    if not @metadata.singular?
+      @metadata.singular = @_camelToSnakeCase @name
+
+    # default 'tableName' is snake_case of Class + 's' e.g. users (User)
+    if not @metadata.tableName?
+      @metadata.tableName = @_camelToSnakeCase(@name) + 's'
+
+    # default 'primaryKey' is set to 'id'
+    if not @metadata.primaryKey?
+      @metadata.primaryKey = 'id'
+
+    # if 'timestamps' attribute was not passed, we set its default val to true
+    if not @metadata.timestamps?
+      @metadata.timestamps = true
+
+    obj.extended?.apply(@)
+    this
+
   @include: (obj) ->
     @::['attributes'] = {}
     for key, value of obj when key not in moduleKeywords
