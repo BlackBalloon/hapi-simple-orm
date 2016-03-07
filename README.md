@@ -2,7 +2,7 @@ Hapi.js simple ORM
 ==================
 
 Small library used to reflect database tables in Hapi based applications. It provides DAO layer, as well as Model's instances serialization for routing.
-It also can generate routing objects, that can be passed to `server.route()` method, for every model (basic operations GET, PUT, POST, DELETE).
+It also can generate routing objects, that can be passed to `server.route()` method, for every model (basic operations GET, PUT, POST, DELETE). Strongly inspired by Django framework and django-rest-framework library.
 
 ## Installation
 
@@ -16,6 +16,7 @@ It also can generate routing objects, that can be passed to `server.route()` met
   `knexfile.js/coffee` in root folder of the project which would look as follows:
 
   ```coffee
+  # example configuration for PostgreSQL
   module.exports =
     development:
       client: 'pg'
@@ -78,13 +79,23 @@ It also can generate routing objects, that can be passed to `server.route()` met
   class User extends baseModel
 
     @include userAttributes
-
-    @metadata =
-      tableName: 'users'
-      singular: 'user'
-      model: 'User'
-      primaryKey: 'id'
+    ###
+    # here we extend with empty object {}, due to the fact that there is no need
+    # to pass any additional parameters that will be used in Meta attributes of the Model
+    # the '.extend()' method generates 'metadata' class attribute of the User model
+    # which specifies the 'tableName', 'primaryKey', whether to use 'timestamp' fields
+    # as well as the Model's name itself
+    # exemplary 'metadata' object could look like follow:
+    {
+      tableName: 'users',
+      singular: 'user',
+      primaryKey: 'id',
+      model: 'User',
       timestamps: true
+    }
+    # the 'timestamps' attribute's default value is set to true when not specified
+    ###
+    @extend {}
 
     toString: =>
       @get 'name'
@@ -93,11 +104,41 @@ It also can generate routing objects, that can be passed to `server.route()` met
   module.exports = User
   ```
 
-  Then it is able to perform DAO operations
+  Every model obtain's basic DAO extension, however it is possible to define DAO for every model separately:
+
+  ```coffee
+  BaseDAO       = require('hapi-simple-orm').daos.BaseDAO
+
+  class UserDAO extends BaseDAO
+
+    config:
+      lookupField: 'id'
+      returning:
+        basic: [
+          'id'
+          'username'
+        ]
+
+  module.exports = UserDAO
+  ```
+
+  From now on the User model has it's own DAO class, which can be used by accessing the '.objects()' function of the User Class:
 
   ```coffee
   User.objects().all().then (users) ->
     console.log users
+    ###
+    [
+      {
+        id: 1,
+        username: 'tom'
+      },
+      {
+        id: 2,
+        username: 'john'
+      }
+    ]
+    ###
   .catch (error) ->
     throw error
   ```
@@ -128,6 +169,16 @@ It also can generate routing objects, that can be passed to `server.route()` met
   .catch (error) ->
     throw error
   ```
+
+  Every DAO has several default operations that can be performed on every Model:
+  * getById - find one instance of Model by specifying value of it's primary key
+  * get - find one instance of Model by specifying lookup values
+  * all - return all instances of Model
+  * filter - filter Model instances by specified lookup values
+  * create - create and save new instance of Model
+  * bulkCreate - create and save multiple instances of Model at once
+  * update - update specified instance of Model
+  * delete - delete specified instance of Model
 
 ## Serializers based on Models
 
