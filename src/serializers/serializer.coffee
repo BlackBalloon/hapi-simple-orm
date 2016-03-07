@@ -32,7 +32,7 @@ class Serializer
     # no value was specified in the 'fields' and 'readOnlyFields' attributes of the serializer
     # we assume that all Model's fields should be returned by this serializer
     if @constructor.config.fields.length is 0 and @constructor.config.readOnlyFields.length is 0
-      modelFields = _.keys @constructor.config.model::attributes
+      @serializerFields = _.keys @constructor.config.model::attributes
     else
       @serializerFields = _.union @constructor.config.fields, @constructor.config.readOnlyFields
 
