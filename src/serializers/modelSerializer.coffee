@@ -135,6 +135,8 @@ class ModelSerializer extends Serializer
     throughFields = obj.attributes[key].attributes.throughFields
     # value of current model's instance for it's primary key
     val = obj[obj.constructor.metadata.primaryKey]
+    # set default serializer to 'PrimaryKeyRelatedSerializer' - array of IDs
+    serializer ?= new PrimaryKeyRelatedSerializer many: true
 
     # defining fields that should be returned from the related objects
     # but first we need to check if the serializer isnt PrimaryKeyRelatedSerializer
@@ -185,6 +187,8 @@ class ModelSerializer extends Serializer
     # value of current model's instance for it's primary key
     # used for lookup in referenced model
     val = obj[obj.constructor.metadata.primaryKey]
+    # set default serializer to 'PrimaryKeyRelatedSerializer' - array of IDs
+    serializer ?= new PrimaryKeyRelatedSerializer many: true
 
     returning = []
     if serializer instanceof PrimaryKeyRelatedSerializer

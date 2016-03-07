@@ -11,6 +11,17 @@ class BaseDAO
   constructor: (model) ->
     @config.model = model
 
+    # set default lookupField to 'primaryKey' of current model
+    # if none was specified
+    if not @config.lookupField?
+      @config.lookupField = @config.model.metadata.primaryKey
+
+    # set default 'returning' attribute of 'config'
+    # and it's 'basic' value to ['*'] - return all fields
+    if not @config.returning?
+      @config.returning = {}
+      @config.returning['basic'] = ['*']
+
     # check if '@config.returning.basic' array contains '*'
     # if it does, it means that each query using this returning
     # should return all attributes of given model
@@ -24,7 +35,7 @@ class BaseDAO
   # @param [Any] val value of the primary key
   # @param [Array] returning array of fields to be returned from the DB
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
-  getById: ({ val, returning, toObject} = {}) ->
+  getById: ({ val, returning, toObject } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
@@ -41,7 +52,7 @@ class BaseDAO
       .then (rows) =>
         # throw error if query returned more than 1 row - it definitely should not do that
         if rows.length > 1
-          throw new Error "GET method on '#{@config.model.metadata.tableName}' returned more than 1 row!"
+          throw new Error "'getById' method on '#{@config.model.metadata.tableName}' returned more than 1 row!"
 
         # if 'toObject' was set to true we need to check if 'get' method returned any rows
         # if yes, then we create instance, otherwise we return empty result
@@ -55,18 +66,18 @@ class BaseDAO
   # @param [Object] lookup object which is used in 'where' sql query like: { id: 5 }
   # @param [Array] returning array of fields to be returned from the DB e.g. ['id', 'name']
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
-  get: ({ where, lookup, returning, toObject } = {}) ->
+  get: ({ lookup, returning, toObject } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
-    where ?= 'where'
 
     if not lookup?
       throw new Error "Lookup object is required!"
 
     returning ?= @config.returning.basic
 
-    knex(@config.model.metadata.tableName)[where](lookup)
+    knex(@config.model.metadata.tableName)
+      .where(lookup)
       .andWhere('is_deleted', false)
       .select(returning)
       .then (rows) =>
@@ -129,7 +140,7 @@ class BaseDAO
     # so for example, if the object was: { key: 'where', values: ['name', '=', 'sample name'] }
     # corresponding query would look like: where "name" = "sample name"
     _.each lookup, (val) ->
-      if typeof val.values[0] is 'object'
+      if typeof val.values[0] is 'object' and not (_.isEmpty val.values[0])
         query[val.key]( ->
           _.each val.values, (nestedVal) =>
             if nestedVal.values.length is 2
@@ -137,7 +148,7 @@ class BaseDAO
             else
               @[nestedVal.key](nestedVal.values[0], nestedVal.values[1], nestedVal.values[2])
         )
-      else
+      else if val.values instanceof Array
         if val.values.length is 2
           query[val.key](val.values[0], val.values[1])
         else if val.values.length is 3

@@ -5,11 +5,6 @@ Promise         = require 'bluebird'
 
 ForeignKey      = require './../fields/foreignKey'
 
-acceptedFieldTypes = [
-  'ForeignKey'
-  'BaseField'
-]
-
 
 class Serializer
 
@@ -38,19 +33,14 @@ class Serializer
     # we assume that all Model's fields should be returned by this serializer
     if @constructor.config.fields.length is 0 and @constructor.config.readOnlyFields.length is 0
       modelFields = _.keys @constructor.config.model::attributes
-      # here we select only those fields that do not reflect any m2m/m2o relations
-      @serializerFields = _.filter modelFields, (val) => @constructor.config.model::attributes[val].constructor.name in acceptedFieldTypes
     else
       @serializerFields = _.union @constructor.config.fields, @constructor.config.readOnlyFields
 
     # final check whether serializer's fields are acceptable
     _.each @serializerFields, (val, key) =>
-      # here we check if field is passed in form of string e.g. 'company''
-      if typeof val is 'string'
-        if @constructor.config.model::attributes[val]? and not (@constructor.config.model::attributes[val].constructor.name in acceptedFieldTypes)
-          throw new Error "Field '#{val}' is not accepted in ModelSerializer, because it represents m2m/m2o relation!"
-        else if not @constructor.config.model::attributes[val]?
-          throw new Error "Key '#{val}' does not match any attribute of model #{@constructor.config.model.metadata.model}"
+      # here we check if field is passed in form of string e.g. 'company'
+      if typeof val is 'string' and not @constructor.config.model::attributes[val]?
+        throw new Error "Key '#{val}' does not match any attribute of model #{@constructor.config.model.metadata.model}"
 
     # here we get all field names from serializer specified fields
     # we perform a check whether current field was not set as 'excluded'

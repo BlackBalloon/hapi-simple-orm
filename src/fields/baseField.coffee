@@ -31,7 +31,6 @@ class BaseField
     'required'        # defines if field value must be passed
     'unique'          # defines if the column value is unique
     'schema'          # defines the Joi validation schema
-    'initialSchema'   # defines Joi validation schema without required flag
     'dbField'         # defines name of the column in table
     'abstract'        # defines if field should be saved to database
     'name'            # defines 'camelCase' readable name
@@ -55,9 +54,13 @@ class BaseField
     @attributes = _.reduce @attributes, (memo, value) ->
       return value
 
+    # if current field has 'primaryKey' attribute set and it does not have
+    # its 'name' specified, then we set the 'name' attribute to 'id'
     if @attributes.primaryKey and not _.has @attributes, 'name'
       @attributes['name'] = 'id'
 
+    # if specify the 'dbField' attribute for current field basing on
+    # it's 'name' attribute value - name is translated from camelCase to snake_case
     if not (@constructor.name is 'ForeignKey') and _.has @attributes, 'name'
       @attributes['dbField'] = @getDbField @attributes.name
 
@@ -84,14 +87,6 @@ class BaseField
   # @param [Any] primaryKey named parameter, value of primary key of current model's instance
   # @param [Object] trx transaction object in case when multiple records will be impacted
   validateUnique: (value, { primaryKey, trx }) =>
-    lookup = {}
-    lookup[@attributes.dbField] = value
-
-    # when checking unique constraint, we need to omit the deleted records
-    omitDeleted =
-      is_deleted: false
-
-    self = @
     query = "SELECT EXISTS(SELECT 1 FROM #{@attributes.modelMeta.tableName}
               WHERE #{@attributes.dbField} = ?
               AND is_deleted = false"
@@ -106,6 +101,7 @@ class BaseField
 
     finalQuery = knex.raw(query, bindings)
     if trx?
+      # apply transaction if was passed to the method
       finalQuery.transacting(trx)
 
     finalQuery.then (result) =>
@@ -135,19 +131,26 @@ class BaseField
         returnObj[@attributes.name] = err
         return returnObj
 
+  # get 'dbField' attribute for specified 'val'
+  # translates 'camelCase' to 'snake_case'
   getDbField: (val) =>
     if not _.has @attributes, 'dbField'
       return @constructor._camelToSnakeCase val
     return @attributes.dbField
 
+  # return Joi validation schema of current field
   getSchema: ->
+    # throw error if the field does not have its schema specified
     if not _.has @attributes, 'schema'
       throw new Error "Field '#{@attributes.name}' does not have its schema!"
 
     schema = @attributes.schema
+    # if field is set as 'required', then append '.required()' method
+    # to current field's schema attribute
     if @attributes.required
       schema = schema.required()
     else
+      # otherwise allow 'null' values
       schema = schema.allow(null)
 
     schema

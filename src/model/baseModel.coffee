@@ -12,6 +12,8 @@ BaseField   = require '../fields/baseField'
 ManyToMany  = require '../fields/manyToMany'
 ManyToOne   = require '../fields/manyToOne'
 
+BaseDAO     = require './../dao/baseDao'
+
 moduleKeywords = ['extended', 'included']
 
 class BaseModel
@@ -72,7 +74,7 @@ class BaseModel
     if dao?
       return new dao @
     else
-      throw new Error "Model #{@metadata.model} does not have its DAO!"
+      return new BaseDAO @
 
   # Class Method used to convert passed parameter to 'camelCase'
   # @param [String] string value to be translated to camelCase

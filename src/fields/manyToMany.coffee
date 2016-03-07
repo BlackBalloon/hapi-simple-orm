@@ -22,6 +22,7 @@ class ManyToMany
     @attributes = _.reduce @attributes, (memo, value) ->
       return value
 
+    # default Joi validation schema for M2M relation is array of positive integers
     if not _.has @attributes, 'schema'
       _.extend @attributes, { schema: Joi.array(Joi.number().integer().positive()) }
 

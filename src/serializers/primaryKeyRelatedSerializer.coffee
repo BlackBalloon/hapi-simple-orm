@@ -13,6 +13,7 @@ class PrimaryKeyRelatedSerializer extends Serializer
   ]
 
   constructor: ({ @many } = {}) ->
+    @many ?= false
     _.each arguments[0], (val, key) =>
       if not (key in @constructor.acceptedParameters)
         throw new TypeError "Parameter '#{key} is not accepted in #{@constructor.name}'"

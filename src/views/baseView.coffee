@@ -5,6 +5,7 @@ _       = require 'underscore'
 acceptableMethods = [
   'get'
   'put'
+  'patch'
   'post'
   'delete'
 ]
@@ -26,7 +27,9 @@ class BaseView
   # defines http verb (method) of current method
   # 'methodName' should be one of ['get', 'put', 'post', 'delete', 'patch']
   @method: (methodName) -> (method) -> ->
-    if not (methodName.toLowerCase() in ['get', 'put', 'patch', 'post', 'delete'])
+    if not methodName?
+      throw new Error "It is necessary to specify 'methodName' attribute for the view!"
+    if methodName? and not (methodName.toLowerCase() in acceptableMethods)
       throw new Error "Method name for route should be one of #{acceptableMethods}!"
 
     @constructor._decoratorMethodBody @, method, arguments, 'method', methodName
@@ -34,14 +37,16 @@ class BaseView
   # routing method decorator defining path for the request
   # e.g. '/products'
   @path: (path) -> (method) -> ->
-    if typeof path isnt 'string'
+    if not path?
+      throw new Error "It is necessary to specify 'path' attribute for the view!"
+    if path? typeof path isnt 'string'
       throw new Error "'path' of the route should be a string"
 
     @constructor._decoratorMethodBody @, method, arguments, 'path', path
 
   # routing method decorator specifying id parameter of this route
   @id: (id) -> (method) -> ->
-    if typeof id isnt 'string'
+    if id? and typeof id isnt 'string'
       throw new Error "'id' of the route should be a string"
 
     @constructor._decoratorMethodBody @, method, arguments, 'id', id
@@ -49,7 +54,7 @@ class BaseView
   # routing method decorator specifying description of current route
   # for documentation purposes
   @description: (description) -> (method) -> ->
-    if typeof description isnt 'string'
+    if description? and typeof description isnt 'string'
       throw new Error "'description' of the route should be a string"
 
     @constructor._decoratorMethodBody @, method, arguments, 'description', description
@@ -59,7 +64,8 @@ class BaseView
   # this parameter is used in server method calles 'swaggerRouteResponse'
   # for documentation purposes
   @many: (many) -> (method) -> ->
-    if typeof many isnt 'boolean'
+    many ?= false
+    if many? and typeof many isnt 'boolean'
       throw new Error "'many' attribute should be boolean"
 
     @constructor._decoratorMethodBody @, method, arguments, 'many', many
@@ -68,7 +74,8 @@ class BaseView
   # (their names and validation object as Joi object)
   # so e.g. '/products/{id}', the param would be 'id' with corresponding validation object as value
   @params: (params) -> (method) -> ->
-    if typeof params isnt 'object'
+    params ?= {}
+    if params? and typeof params isnt 'object'
       throw new Error "'params' of the routing should be an object'"
 
     @constructor._decoratorMethodBody @, method, arguments, 'params', params
@@ -76,7 +83,7 @@ class BaseView
   constructor: (@server, @options) ->
 
   # returns basic configuration current route method
-  # basing on previously defined decorators 
+  # basing on previously defined decorators
   _getBasicConfiguration: ({ method, description, id, path, many, params } = {}) ->
     {
       method: method
