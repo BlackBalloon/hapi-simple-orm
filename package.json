@@ -1,7 +1,7 @@
 {
   "name": "hapi-simple-orm",
   "version": "0.0.1",
-  "description": "Simple ORM for node based applications.",
+  "description": "Simple ORM for Hapi based applications.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
