@@ -80,11 +80,32 @@ class BaseView
 
     @constructor._decoratorMethodBody @, method, arguments, 'params', params
 
+  # routing method decorator specifying responses of current view
+  # for documentation purposes
+  @responses: (responses) -> (method) -> ->
+    @constructor._decoratorMethodBody @, method, arguments, 'responses', responses
+
+  # routing method decorator specifying validation object of request payload
+  @payload: (payload) -> (method) -> ->
+    payload ?= {}
+    if payload? and typeof payload isnt 'object'
+      throw new Error "'payload' of the routing object should be an object"
+      
+    @constructor._decoratorMethodBody @, method, arguments, 'payload', payload
+
   constructor: (@server, @options) ->
 
   # returns basic configuration current route method
   # basing on previously defined decorators
-  _getBasicConfiguration: ({ method, description, id, path, many, params } = {}) ->
+  # @param [String] method - specifies method of current view
+  # @param [String] description - description of current view for documentation
+  # @param [String] id - id of current Hapi route
+  # @param [String] path - path of current view e.g. /users/{id}
+  # @param [Boolean] many - defines if view should return multiple records
+  # @param [Object] params - object defining validation of path parameters
+  # @param [Object] responses - object specifying responses of current view for documentation
+  # @param [Object] payload - object fedining validation of request payload
+  _getBasicConfiguration: ({ method, description, id, path, many, params, responses, payload } = {}) ->
     {
       method: method
       path: path
@@ -100,9 +121,10 @@ class BaseView
         validate:
           headers: @server.methods.headerValidation()
           params: params
+          payload: payload
 
         plugins:
-          'hapi-swagger': @server.methods.swaggerRouteResponse(method, many)
+          'hapi-swagger': @server.methods.swaggerRouteResponse(method, many, responses)
     }
 
 

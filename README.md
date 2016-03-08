@@ -171,14 +171,14 @@ It also can generate routing objects, that can be passed to `server.route()` met
   ```
 
   Every DAO has several default operations that can be performed on every Model:
-  * getById - find one instance of Model by specifying value of it's primary key
-  * get - find one instance of Model by specifying lookup values
-  * all - return all instances of Model
-  * filter - filter Model instances by specified lookup values
-  * create - create and save new instance of Model
-  * bulkCreate - create and save multiple instances of Model at once
-  * update - update specified instance of Model
-  * delete - delete specified instance of Model
+  * `getById` - find one instance of Model by specifying value of it's primary key
+  * `get` - find one instance of Model by specifying lookup values
+  * `all` - return all instances of Model
+  * `filter` - filter Model instances by specified lookup values
+  * `create` - create and save new instance of Model
+  * `bulkCreate` - create and save multiple instances of Model at once
+  * `update` - update specified instance of Model
+  * `delete` - delete specified instance of Model
 
 ## Serializers based on Models
 
