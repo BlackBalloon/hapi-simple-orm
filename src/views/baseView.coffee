@@ -90,7 +90,7 @@ class BaseView
     payload ?= {}
     if payload? and typeof payload isnt 'object'
       throw new Error "'payload' of the routing object should be an object"
-      
+
     @constructor._decoratorMethodBody @, method, arguments, 'payload', payload
 
   constructor: (@server, @options) ->
