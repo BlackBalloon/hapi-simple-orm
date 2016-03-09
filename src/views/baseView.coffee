@@ -112,14 +112,14 @@ class BaseView
 
       config:
         description: description
-        tags: ['api', "#{@config.tag}"]
+        tags: @config.tags
         id: id
 
-        security: @server.securityOptions.security
+        security: @options.security
         cors: true
 
         validate:
-          headers: @server.methods.headerValidation()
+          headers: @options.headersValidation
           params: params
           payload: payload
 
