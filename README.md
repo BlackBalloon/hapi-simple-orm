@@ -267,7 +267,7 @@ It also can generate routing objects, that can be passed to `server.route()` met
 
 ## Release History
 * 0.0.2
-  * Added '.extend()' method to BaseModel which simplifies specifying Meta attributes of Model.
+  * Added `.extend()` method to BaseModel which simplifies specifying Meta attributes of Model.
   * Now ModelSerializer can obtain M2M/M2O related field in 'fields' attribute, which will return array of IDs.
   * Small issues.
 * 0.0.1 Initial release

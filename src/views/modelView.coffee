@@ -6,6 +6,12 @@ Boom        = require 'boom'
 
 BaseView    = require './baseView'
 
+optionsAllowedAttributes = [
+  'security'
+  'headersValidation'
+  'validate'
+]
+
 
 class ModelView extends BaseView
 
@@ -33,6 +39,49 @@ class ModelView extends BaseView
     # translates UpperCase to camelCase e.g. AccountCategory will become accountCategory
     @config.assignValue = @config.model.metadata.model.substr(0, 1).toLowerCase() + @config.model.metadata.model.substr(1)
 
+    _.each @options, (val, key) ->
+      if key not in optionsAllowedAttributes
+        throw new Error "Attribute '#{key}' is not accepted in 'options' parameter!"
+
+    ###
+    options obj:
+    {
+      security: {
+        hsts: true
+        xframe:
+          rule: 'sameorigin'
+        xss: true
+        noOpen: true
+        noSniff: true
+      }
+      headersValidation: Joi.object()
+      validate: {
+        failAction: (request, reply, source, error)
+        options: {
+          abortEarly: boolean
+          stripUnknown: boolean
+        }
+      }
+    }
+    ###
+
+    # if options was not passed, set it to empty object
+    @options ?= {}
+
+    # security headers
+    @options.security ?= undefined
+    # validation of request headers e.g. 'authorization' header
+    @options.headersValidation ?= undefined
+    # validate options - failAction and other options
+    # failAction must be a method with definition like (request, reply, source, error)
+    # and needs to finish execution by calling '.reply()'
+    @options.validate ?= {}
+
+    # validation of path parameters e.g. id
+    @paramsValidation = {}
+    primaryKey = @config.model.metadata.primaryKey
+    @paramsValidation[primaryKey] = @config.model::attributes[primaryKey].attributes.schema.required()
+
   get: (ifSerialize, serializer) =>
     {
       method: 'GET'
@@ -40,16 +89,15 @@ class ModelView extends BaseView
 
       config:
         description: "Return #{@config.model.metadata.model} with specified id"
-        tags: ['api', "#{@config.tag}"]
+        tags: @config.tags
         id: "return#{@config.model.metadata.model}"
 
-        security: @server.securityOptions.security
+        security: @options.security
         cors: true
 
         validate:
-          headers: @server.methods.headerValidation()
-          params:
-            id: Joi.number().integer().positive().required()
+          headers: @options.headersValidation
+          params: @paramsValidation
 
         plugins:
           'hapi-swagger': @server.methods.swaggerRouteResponse('get', false)
@@ -80,14 +128,14 @@ class ModelView extends BaseView
 
       config:
         description: "Return all #{@config.pluralName}"
-        tags: ['api', "#{@config.tag}"]
+        tags: @config.tags
         id: "returnAll#{@config.pluralName}"
 
-        security: @server.securityOptions.security
+        security: @options.security
         cors: true
 
         validate:
-          headers: @server.methods.headerValidation()
+          headers: @options.headersValidation
 
         plugins:
           'hapi-swagger': @server.methods.swaggerRouteResponse('get', true)
@@ -115,22 +163,20 @@ class ModelView extends BaseView
 
       config:
         description: "Create new #{@config.model.metadata.model}"
-        tags: ['api',"#{@config.tag}"]
+        tags: @config.tags
         id: "addNew#{@config.model.metadata.model}"
 
-        security: @server.securityOptions.security
+        security: @options.security
         cors: true
 
         validate:
-          headers: @server.methods.headerValidation()
+          headers: @options.headersValidation
           payload: @config.model.getSchema()
-          failAction: @server.methods.ValidationErrorResponse
-          options:
-            abortEarly: false
-            stripUnknown: true
+          failAction: @options.validate.failAction
+          options: @options.validate.options
 
         plugins:
-          'hapi-swagger': @server.methods.swaggerRouteResponse('post')
+          'hapi-swagger': @options.headersValidation
 
         handler: (request, reply) =>
           if request.auth.credentials?
@@ -162,21 +208,18 @@ class ModelView extends BaseView
 
       config:
         description: "Update #{@config.model.metadata.model} with specified id"
-        tags: ['api', "#{@config.tag}"]
+        tags: @config.tags
         id: "update#{@config.model.metadata.model}"
 
-        security: @server.securityOptions.security
+        security: @options.security
         cors: true
 
         validate:
-          headers: @server.methods.headerValidation()
-          params:
-            id: Joi.number().integer().positive().required()
+          headers: @options.headersValidation
+          params: @paramsValidation
           payload: @config.model.getSchema()
-          failAction: @server.methods.ValidationErrorResponse
-          options:
-            abortEarly: false
-            stripUnknown: true
+          failAction: @options.validate.failAction
+          options: @options.validate.options
 
         plugins:
           'hapi-swagger': @server.methods.swaggerRouteResponse('put')
@@ -225,16 +268,15 @@ class ModelView extends BaseView
 
       config:
         description: "Delete #{@config.model.metadata.model} with specified id"
-        tags: ['api', "#{@config.tag}"]
+        tags: @config.tags
         id: "delete#{@config.model.metadata.model}"
 
-        security: @server.securityOptions.security
+        security: @options.security
         cors: true
 
         validate:
-          headers: @server.methods.headerValidation()
-          params:
-            id: Joi.number().integer().positive().required()
+          headers: @options.headersValidation
+          params: @paramsValidation
 
         plugins:
           'hapi-swagger': @server.methods.swaggerRouteResponse('delete')
