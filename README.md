@@ -1,8 +1,9 @@
 Hapi.js simple ORM
 ==================
+Still under maintenance, it is not recommended to be used in production!!!
 
 Small library used to reflect database tables in Hapi based applications. It provides DAO layer, as well as Model's instances serialization for routing.
-It also can generate routing objects, that can be passed to `server.route()` method, for every model (basic operations GET, PUT, POST, DELETE). Strongly inspired by Django framework and django-rest-framework library.
+It also can generate routing objects, that can be passed to `server.route()` method, for every model (basic operations GET, PUT, POST, DELETE). Strongly inspired by [Django framework](https://www.djangoproject.com/) and [django-rest-framework](http://www.django-rest-framework.org/).
 
 ## Installation
 
