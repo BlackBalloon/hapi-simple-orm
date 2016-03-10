@@ -4,7 +4,7 @@
   "description": "Simple ORM for Hapi based applications.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node_modules/.bin/mocha --reporter spec --recursive --require test/index.js --require coffee-script/register --compilers coffee:coffee-script"
   },
   "author": "Piotr Bienias <piotr.bienias@blackballoon.pl> (http://www.blackballoon.pl)",
   "license": "MIT",
@@ -12,11 +12,15 @@
     "bluebird": "^3.3.3",
     "boom": "^3.1.2",
     "fs": "0.0.2",
+    "hapi": "^13.1.0",
     "joi": "^8.0.4",
     "knex": "^0.10.0",
+    "pg": "^4.5.1",
     "underscore": "^1.8.3"
   },
   "devDependencies": {
-    "coffee-script": "^1.10.0"
+    "chai": "^3.5.0",
+    "coffee-script": "^1.10.0",
+    "mocha": "^2.4.5"
   }
 }

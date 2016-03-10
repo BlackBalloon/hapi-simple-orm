@@ -54,6 +54,8 @@ class BaseField
     @attributes = _.reduce @attributes, (memo, value) ->
       return value
 
+    @attributes.errorMessages ?= {}
+
     # if current field has 'primaryKey' attribute set and it does not have
     # its 'name' specified, then we set the 'name' attribute to 'id'
     if @attributes.primaryKey and not _.has @attributes, 'name'

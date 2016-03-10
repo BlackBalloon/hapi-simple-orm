@@ -80,11 +80,8 @@ class ManyToMany
     get: ({ id, toObject } = {}) =>
       knex(@toModel.metadata.tableName)
         .select(@returning)
-        .leftJoin(@through, "#{@toModel.metadata.tableName}.id", "#{@through}.#{@throughFields[1]}")
-        .leftJoin(@thisModel, "#{@thisModel}.id", "#{@through}.#{@throughFields[0]}")
-        .where("#{@thisModel}.id", @obj[@obj.constructor.metadata.primaryKey])
-        .andWhere("#{@toModel}.id", id)
-        .andWhere("#{@toModel.metadata.tableName}.is_deleted", false)
+        .where("#{@toModel.metadata.primaryKey}", id)
+        .andWhere('is_deleted', false)
         .then (result) =>
           if toObject? and result.length is 1
             return new @toModel result[0]
