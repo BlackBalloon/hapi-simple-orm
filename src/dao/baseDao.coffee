@@ -119,7 +119,7 @@ class BaseDAO
         direction: 'asc'
     # otherwise, if 'orderBy' is object, we check if it has 'column' attribute and if it exists in Model's attributes
     else if orderBy? and _.isObject(orderBy) and 'column' in _.keys(orderBy) and orderBy.column of @config.model::attributes
-      orderBy.column = @config.model::attributes[orderBy].attributes.dbField
+      orderBy.column = @config.model::attributes[orderBy.column].attributes.dbField
       # if there was no 'direction' attribute in 'orderBy' object, we set default value to 'asc'
       orderBy.direction ?= 'asc'
     else if orderBy?
