@@ -105,17 +105,39 @@ class BaseDAO
   # return all instances of given Model
   # @param [Array] returning array of fields to be returned from the DB e.g. ['id', 'name']
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
-  all: ({ returning, toObject } = {}) ->
+  all: ({ returning, toObject, orderBy } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
 
+    # if 'orderBy' is a string (field name), we check if it exists in Model attributes
+    if orderBy? and typeof orderBy is 'string' and orderBy of @config.model::attributes
+      column = @config.model::attributes[orderBy].attributes.dbField
+      # if it does exist, we get the dbField and set the direction to 'asc'
+      orderBy =
+        column: column
+        direction: 'asc'
+    # otherwise, if 'orderBy' is object, we check if it has 'column' attribute and if it exists in Model's attributes
+    else if orderBy? and _.isObject orderBy and 'column' in _.keys orderBy and orderBy.column of @config.model::attributes
+      orderBy.column = @config.model::attributes[orderBy].attributes.dbField
+      # if there was no 'direction' attribute in 'orderBy' object, we set default value to 'asc'
+      orderBy.direction ?= 'asc'
+    else if orderBy?
+      # otherwise throw an error with proper message
+      throw new Error "'orderBy' should be an object with 'column' and 'direction' attributes " +
+                      "or name of the field of #{@config.model.metadata.model}!"
+
     returning ?= @config.returning.basic
 
-    knex(@config.model.metadata.tableName)
+    knexQuery = knex(@config.model.metadata.tableName)
       .select(returning)
-      .andWhere('is_deleted', false)
-      .then (rows) =>
+      .where('is_deleted', false)
+
+    # apply ordering if 'orderBy' exists
+    if orderBy?
+      knexQuery.orderBy(orderBy.column, orderBy.direction)
+
+    knexQuery.then (rows) =>
         # if result is to be translated to Model instances, we need to check
         # if query returned at least 1 result, otherwise return empty result
         if toObject and rows.length > 0
@@ -131,7 +153,7 @@ class BaseDAO
   # @param [Array] lookup array of objects with keys: 'key', 'values'. Defines the filtering attributes like 'where', 'orWhere', 'whereIn' etc.
   # @param [Array] returning array of fields to be returned from the DB e.g. ['id', 'name']
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
-  filter: ({ lookup, returning, toObject } = {}) ->
+  filter: ({ lookup, returning, toObject, orderBy } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
@@ -139,6 +161,23 @@ class BaseDAO
     returning ?= @config.returning.basic
     # default 'lookup' value is set to '{}' if none was passed
     lookup ?= [{ key: 'where', values: {} }]
+
+    # if 'orderBy' is a string (field name), we check if it exists in Model attributes
+    if orderBy? and typeof orderBy is 'string' and orderBy of @config.model::attributes
+      column = @config.model::attributes[orderBy].attributes.dbField
+      # if it does exist, we get the dbField and set the direction to 'asc'
+      orderBy =
+        column: column
+        direction: 'asc'
+    # otherwise, if 'orderBy' is object, we check if it has 'column' attribute and if it exists in Model's attributes
+    else if orderBy? and _.isObject orderBy and 'column' in _.keys orderBy and orderBy.column of @config.model::attributes
+      orderBy.column = @config.model::attributes[orderBy].attributes.dbField
+      # if there was no 'direction' attribute in 'orderBy' object, we set default value to 'asc'
+      orderBy.direction ?= 'asc'
+    else if orderBy?
+      # otherwise throw an error with proper message
+      throw new Error "'orderBy' should be an object with 'column' and 'direction' attributes " +
+                      "or name of the field of #{@config.model.metadata.model}!"
 
     query = knex(@config.model.metadata.tableName).select(returning)
 
@@ -167,6 +206,11 @@ class BaseDAO
 
     query.andWhere('is_deleted', false)
     console.log query.toString()
+
+    # apply ordering to the query if orderBy exists
+    if orderBy?
+      query.orderBy(orderBy.column, orderBy.direction)
+
     query.then (rows) =>
       # if result is to be translated to Model instances, we need to check
       # if query returned at least 1 result, otherwise return empty result

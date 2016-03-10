@@ -255,8 +255,9 @@ It also can generate routing objects, that can be passed to `server.route()` met
       headersValidation: Joi.object({ 'authorization': Joi.string() }).unknown()
       validate:
         failAction: undefined # <fail action method to handle Joi validation errors>
-        abortEarly: false
-        stripUnknown: true
+        options:
+          abortEarly: false
+          stripUnknown: true
 
     userModelView = new UserModelView server, routingOptions
 
