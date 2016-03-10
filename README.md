@@ -273,9 +273,15 @@ It also can generate routing objects, that can be passed to `server.route()` met
   ```
 
 ## Tests
-  TODO
+  Only BaseDAO tests with M2M/M2O relations.
+  It is necessary to create PostgreSQL database, according to `knexfile.js` configuration file. Then simply run `npm test`. This will perform migrations rollback before and after the tests.
 
 ## Release History
+* 0.0.3
+  * Custom routing options that can be passed to ModelView constructor (security, headers validation and payload validation actions)
+  * DAO for specified Model is now passed via the `metadata` attribute of this Model.
+  * log4js error logger object can now be passed to Model's `metadata` in order to perform custom logging of errors.
+  * `.all()` and `.filter()` methods of DAO can now obtain `orderBy` attribute, which can be string (Model's field) or object with two attributes: `column` and `direction` of the ordering.
 * 0.0.2
   * Added `.extend()` method to BaseModel which simplifies specifying Meta attributes of Model.
   * Now ModelSerializer can obtain M2M/M2O related field in 'fields' attribute, which will return array of IDs.
