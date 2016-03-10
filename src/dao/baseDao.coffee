@@ -52,7 +52,7 @@ class BaseDAO
       .then (rows) =>
         # throw error if query returned more than 1 row - it definitely should not do that
         if rows.length > 1
-          throw new Error "'getById' method on '#{@config.model.metadata.tableName}' returned more than 1 row!"
+          throw new Error "'getById' method on '#{@config.model.metadata.model}' returned more than 1 row!"
 
         # if 'toObject' was set to true we need to check if 'get' method returned any rows
         # if yes, then we create instance, otherwise we return empty result

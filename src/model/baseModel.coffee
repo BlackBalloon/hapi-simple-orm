@@ -22,6 +22,7 @@ acceptableMetadataAttributes = [
   'tableName'
   'primaryKey'
   'timestamps'
+  'dao'
 ]
 
 class BaseModel
@@ -54,6 +55,12 @@ class BaseModel
     # if 'timestamps' attribute was not passed, we set its default val to true
     if not @metadata.timestamps?
       @metadata.timestamps = true
+
+    if not @metadata.dao?
+      @metadata.dao = BaseDAO
+
+    @objects = ->
+      return new @metadata.dao @
 
     obj.extended?.apply(@)
     this
@@ -95,26 +102,26 @@ class BaseModel
       name: 'isDeleted'
     )
 
-  @objects: ->
-    modulesDir = process.cwd() + '/api/'
-
-    self = @
-    dao = undefined
-    daoFileName = self.metadata.model.substring(0, 1).toLowerCase() + self.metadata.model.substring(1)
-
-    modules = fs.readdirSync modulesDir
-    _.each modules, (moduleName) ->
-      if not moduleName.startsWith '.'
-        insideModule = fs.readdirSync modulesDir + moduleName
-        if 'dao' in insideModule
-          currentModule = fs.readdirSync modulesDir + moduleName + '/dao'
-          if daoFileName + '.coffee' in currentModule
-            dao = require modulesDir + moduleName + '/dao/' + daoFileName
-
-    if dao?
-      return new dao @
-    else
-      return new BaseDAO @
+  # @objects: ->
+  #   modulesDir = process.cwd() + '/api/'
+  #
+  #   self = @
+  #   dao = undefined
+  #   daoFileName = self.metadata.model.substring(0, 1).toLowerCase() + self.metadata.model.substring(1)
+  #
+  #   modules = fs.readdirSync modulesDir
+  #   _.each modules, (moduleName) ->
+  #     if not moduleName.startsWith '.'
+  #       insideModule = fs.readdirSync modulesDir + moduleName
+  #       if 'dao' in insideModule
+  #         currentModule = fs.readdirSync modulesDir + moduleName + '/dao'
+  #         if daoFileName + '.coffee' in currentModule
+  #           dao = require modulesDir + moduleName + '/dao/' + daoFileName
+  #
+  #   if dao?
+  #     return new dao @
+  #   else
+  #     return new BaseDAO @
 
   # Class Method used to convert passed parameter to 'camelCase'
   # @param [String] string value to be translated to camelCase
