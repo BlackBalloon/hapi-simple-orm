@@ -16,12 +16,23 @@ BaseDAO     = require './../dao/baseDao'
 
 moduleKeywords = ['extended', 'included']
 
+acceptableMetadataAttributes = [
+  'model'
+  'singular'
+  'tableName'
+  'primaryKey'
+  'timestamps'
+]
+
 class BaseModel
 
   @extend: (obj) ->
     # add 'metadata' attribute to the model and apply parameters to it
     @metadata = {}
     for key, value of obj when key not in moduleKeywords
+      if key not in acceptableMetadataAttributes
+        throw new Error "The '#{key}' attribute in Model's metadata is not acceptable.\n
+                        Acceptable attributes are #{acceptableMetadataAttributes}."
       @metadata[key] = value
 
     # default 'model' value is name of the Class e.g. AccountCategory

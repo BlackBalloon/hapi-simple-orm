@@ -1,7 +1,7 @@
 module.exports = {
-  models: require('./src/model'),
-  daos: require('./src/dao'),
-  fields: require('./src/fields'),
-  serializers: require('./src/serializers'),
-  views: require('./src/views')
+  models: require('./lib/model'),
+  daos: require('./lib/dao'),
+  fields: require('./lib/fields'),
+  serializers: require('./lib/serializers'),
+  views: require('./lib/views')
 };
