@@ -17,12 +17,13 @@ BaseDAO     = require './../dao/baseDao'
 moduleKeywords = ['extended', 'included']
 
 acceptableMetadataAttributes = [
-  'model'
-  'singular'
-  'tableName'
-  'primaryKey'
-  'timestamps'
-  'dao'
+  'model'       # name of current Model
+  'singular'    # singular name of the database table e.g. account_category
+  'tableName'   # name of table in database
+  'primaryKey'  # pk of table
+  'timestamps'  # boolean defining if timestamp fields should be included
+  'dao'         # DAO object of current Model
+  'errorLogger' # if you want to log errors, pass the log4js error logger object
 ]
 
 class BaseModel
@@ -56,9 +57,11 @@ class BaseModel
     if not @metadata.timestamps?
       @metadata.timestamps = true
 
+    # if no dao was passed in the metadata object, we set default value to BaseDAO
     if not @metadata.dao?
       @metadata.dao = BaseDAO
 
+    # make method '.objects()' of Model Class an instance of DAO
     @objects = ->
       return new @metadata.dao @
 
@@ -101,27 +104,6 @@ class BaseModel
       schema: Joi.boolean()
       name: 'isDeleted'
     )
-
-  # @objects: ->
-  #   modulesDir = process.cwd() + '/api/'
-  #
-  #   self = @
-  #   dao = undefined
-  #   daoFileName = self.metadata.model.substring(0, 1).toLowerCase() + self.metadata.model.substring(1)
-  #
-  #   modules = fs.readdirSync modulesDir
-  #   _.each modules, (moduleName) ->
-  #     if not moduleName.startsWith '.'
-  #       insideModule = fs.readdirSync modulesDir + moduleName
-  #       if 'dao' in insideModule
-  #         currentModule = fs.readdirSync modulesDir + moduleName + '/dao'
-  #         if daoFileName + '.coffee' in currentModule
-  #           dao = require modulesDir + moduleName + '/dao/' + daoFileName
-  #
-  #   if dao?
-  #     return new dao @
-  #   else
-  #     return new BaseDAO @
 
   # Class Method used to convert passed parameter to 'camelCase'
   # @param [String] string value to be translated to camelCase
@@ -235,7 +217,9 @@ class BaseModel
           return @attributes[key].attributes.referenceModel.objects().get({ lookup: lookup, toObject: toObject })
             .then (result) ->
               return result
-            .catch (error) ->
+            .catch (error) =>
+              if @constructor.metadata.errorLogger?
+                @constructor.metadata.errorLogger.error error
               throw error
         else
           # otherwise we just return value for specified key
@@ -289,6 +273,7 @@ class BaseModel
   # First, the validation is performed - if it passes, then model is saved
   save: ({ returning, toObject } = {}) =>
     @validate().then (validationResult) =>
+      console.log @constructor.metadata.errorLogger
       # we check if 'validationResult' is an empty object
       # if it is not, it means that validation returned errors
       if not (_.isEmpty validationResult)
@@ -303,7 +288,9 @@ class BaseModel
       else
         @constructor.objects().create({ payload: @_toDatabaseFields(), returning: returning, toObject: toObject }).then (res) ->
           return res
-    .catch (error) ->
+    .catch (error) =>
+      if @constructor.metadata.errorLogger?
+        @constructor.metadata.errorLogger.error error
       throw error
 
   # Instance method used to delete current Model's instance

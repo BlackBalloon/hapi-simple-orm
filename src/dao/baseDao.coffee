@@ -8,8 +8,13 @@ Promise     = require 'bluebird'
 
 class BaseDAO
 
-  constructor: (model) ->
+  # constructor of BaseDAO, obtains two parameters
+  # @param [Object] model current Model Class
+  # @param [Object] errorLogger log4j logger object for logging errors
+  constructor: (model, errorLogger) ->
+    @config ?= {}
     @config.model = model
+    @config.errorLogger = errorLogger
 
     # set default lookupField to 'primaryKey' of current model
     # if none was specified
@@ -59,7 +64,9 @@ class BaseDAO
         if toObject and rows.length is 1
           return new @config.model rows[0]
         return rows[0]
-      .catch (error) ->
+      .catch (error) =>
+        if @config.errorLogger?
+          @config.errorLogger.error error
         throw error
 
   # return specified instance of given Model
@@ -90,7 +97,9 @@ class BaseDAO
         if toObject and rows.length is 1
           return new @config.model rows[0]
         return rows[0]
-      .catch (error) ->
+      .catch (error) =>
+        if @config.errorLogger?
+          @config.errorLogger.error error
         throw error
 
   # return all instances of given Model
@@ -113,7 +122,9 @@ class BaseDAO
           return _.map rows, (val, key) =>
             new @config.model val
         return rows
-      .catch (error) ->
+      .catch (error) =>
+        if @config.errorLogger?
+          @config.errorLogger.error error
         throw error
 
   # find Model's instances fulfilling given lookup values
@@ -163,7 +174,9 @@ class BaseDAO
         return _.map rows, (val, key) =>
           new @config.model val
       return rows
-    .catch (error) ->
+    .catch (error) =>
+      if @config.errorLogger?
+        @config.errorLogger.error error
       throw error
 
 
@@ -205,7 +218,9 @@ class BaseDAO
           if toObject? and rows.length is 1
             return new @config.model rows[0]
           return rows[0]
-        .catch (error) ->
+        .catch (error) =>
+          if @config.errorLogger?
+            @config.errorLogger.error error
           throw error
 
   # method used to perform bulkCreate on current Model
@@ -272,7 +287,9 @@ class BaseDAO
           .catch(trx.rollback)
     .then (inserts) ->
       return insertedReturning
-    .catch (error) ->
+    .catch (error) =>
+      if @config.errorLogger?
+        @config.errorLogger.error error
       throw error
 
   # update given instance of the model
@@ -302,7 +319,9 @@ class BaseDAO
         if toObject? and rows.length is 1
           return new @config.model rows[0]
         return rows[0]
-      .catch (error) ->
+      .catch (error) =>
+        if @config.errorLogger?
+          @config.errorLogger.error error
         throw error
 
   # delete given instance of the model
@@ -326,7 +345,9 @@ class BaseDAO
         # returns number of deleted rows so if the 'rows' is equal to 0
         # it means that sql lookup failed - no rows were hit
         return rows
-      .catch (error) ->
+      .catch (error) =>
+        if @config.errorLogger?
+          @config.errorLogger.error error
         throw error
 
   getReturning: ->
