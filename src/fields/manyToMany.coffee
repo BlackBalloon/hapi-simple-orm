@@ -64,13 +64,14 @@ class ManyToMany
         .andWhere("#{@toModel.metadata.tableName}.is_deleted", false)
         .then (result) =>
           if toObject?
-            permissions = []
+            relatedObjects = []
             _.each result, (val) =>
-              Permission = require './../../auth/models/permission'
-              permissions.push new @toModel val
-            return permissions
+              relatedObjects.push new @toModel val
+            return relatedObjects
           return result
-        .catch (error) ->
+        .catch (error) =>
+          if @obj.constructor.metadata.errorLogger?
+            @obj.constructor.metadata.errorLogger.error error
           throw error
 
     # returns specified related object
@@ -85,23 +86,19 @@ class ManyToMany
         .andWhere("#{@toModel}.id", id)
         .andWhere("#{@toModel.metadata.tableName}.is_deleted", false)
         .then (result) =>
-          if result.length is 0
-            errorObj = {}
-            errorObj[@name] = "Lookup object does not exist"
-            errorObj['statusCode'] = 404
-            throw errorObj
-
-          if toObject?
+          if toObject? and result.length is 1
             return new @toModel result[0]
           return result[0]
-        .catch (error) ->
+        .catch (error) =>
+          if @obj.constructor.metadata.errorLogger?
+            @obj.constructor.metadata.errorLogger.error error
           throw error
 
     # adds specified objects to set of related objects
     # @param [Array] id Array of IDs of objects to be added
     add: (id...) =>
       if not id?
-        throw new Error "ID of related object is required"
+        throw new Error "IDs of related objects are required"
 
       # _.flatten is used in case array of IDs is passed
       id = _.flatten id
@@ -117,6 +114,7 @@ class ManyToMany
         knex(@toModel.metadata.tableName)
           .count('id')
           .whereIn('id', id)
+          .andWhere('is_deleted', false)
           .transacting(transaction)
           .then (result) =>
             # here we check if all passed related IDs exist in the database
@@ -154,14 +152,19 @@ class ManyToMany
           .catch(transaction.rollback)
       .then (rows) ->
         return rows
-      .catch (error) ->
+      .catch (error) =>
+        # we omit the error with 'statusCode' thrown inside the transaction
+        # it will be used in the request response
+        # we only log errors coming directly from the Knex
+        if @obj.constructor.metadata.errorLogger? and not error.statusCode?
+          @obj.constructor.metadata.errorLogger.error error
         throw error
 
     # clears all curent related objects and defines new set of them
     # @param [Array] id Array of IDs of objects to be set
     set: (id...) =>
       if not id?
-        throw new Error "Set of ID is required"
+        throw new Error "IDs of related objects are required!"
 
       # here we check if the model's instance to which we will save related objects
       # is already saved in the database - has 'primaryKey' value
@@ -183,6 +186,7 @@ class ManyToMany
         knex(@toModel.metadata.tableName)
           .count('id')
           .whereIn('id', id)
+          .andWhere('is_deleted', false)
           .then (result) =>
             if parseInt(result[0].count) isnt id.length
               errorObj = {}
@@ -202,7 +206,12 @@ class ManyToMany
           .catch(transaction.rollback)
       .then (rows) ->
         return rows
-      .catch (error) ->
+      .catch (error) =>
+        # we omit the error with 'statusCode' thrown inside the transaction
+        # it will be used in the request response
+        # we only log errors coming directly from the Knex
+        if @obj.constructor.metadata.errorLogger? and not error.statusCode?
+          @obj.constructor.metadata.errorLogger.error error
         throw error
 
   @getManyToManyManager: ->

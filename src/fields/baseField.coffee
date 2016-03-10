@@ -107,6 +107,8 @@ class BaseField
     finalQuery.then (result) =>
       if result.rows[0].exists is true
         @attributes.errorMessages['unique'] || "#{@attributes.modelMeta.model} with this #{@attributes.name} (#{value}) already exists!"
+    .catch (error) ->
+      throw error
 
   # Instance method which performs validation depending on attributes of given field
   # It puts the results of the validation in array of Promises which is furtherly resolved

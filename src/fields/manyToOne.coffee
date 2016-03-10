@@ -55,11 +55,13 @@ class ManyToOne
         .then (result) =>
           if toObject?
             relatedObjects = []
-            _.each result, (val, key) =>
+            _.each result, (val) =>
               relatedObjects.push new @toModel val
             return relatedObjects
           return result
-        .catch (error) ->
+        .catch (error) =>
+          if @obj.constructor.metadata.errorLogger?
+            @obj.constructor.metadata.errorLogger.error error
           throw error
 
     # return specified related object of this instance
@@ -72,20 +74,18 @@ class ManyToOne
         .where(where)
         .andWhere("#{@toModel.metadata.tableName}.is_deleted", false)
         .then (result) =>
-          errorObj = {}
-          if result.length is 0
-            errorObj[@name] = "Specified related object does not exist"
-            errorObj['statusCode'] = 404
-            throw errorObj
-          else if result.length > 1
+          if result.length > 1
+            errorObj = {}
             errorObj[@name] = "Query returned more than 1 result"
             errorObj['statusCode'] = 400
             throw errorObj
-          else
-            if toObject?
-              return new @toModel result[0]
-            return result
-        .catch (error) ->
+
+          if toObject? and result.length is 1
+            return new @toModel result[0]
+          return result[0]
+        .catch (error) =>
+          if @obj.constructor.metadata.errorLogger? and not error.statusCode?
+            @obj.constructor.metadata.errorLogger.error error
           throw error
 
   # class Getter

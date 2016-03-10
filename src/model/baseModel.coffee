@@ -273,7 +273,6 @@ class BaseModel
   # First, the validation is performed - if it passes, then model is saved
   save: ({ returning, toObject } = {}) =>
     @validate().then (validationResult) =>
-      console.log @constructor.metadata.errorLogger
       # we check if 'validationResult' is an empty object
       # if it is not, it means that validation returned errors
       if not (_.isEmpty validationResult)
@@ -301,7 +300,9 @@ class BaseModel
     if @[primaryKey]?
       @constructor.objects().delete(@[primaryKey], whoDeleted).then (result) ->
         return result
-      .catch (error) ->
+      .catch (error) =>
+        if @constructor.metadata.errorLogger?
+          @constructor.metadata.errorLogger.error error
         throw error
     else
       throw new Error "This #{@constructor.metadata.model} does not have primary key set!"

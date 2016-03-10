@@ -245,11 +245,20 @@ It also can generate routing objects, that can be passed to `server.route()` met
   module.exports = UserModelView
 
   # afterwards, the 'UserModelView' can be used in such a way:
+  Joi             = require 'joi'
   UserModelView   = require './../views/user'
 
   userRoutes = (server, options, next) ->
 
-    userModelView = new UserModelView server, options
+    routingOptions =
+      security: undefined # <security options>
+      headersValidation: Joi.object({ 'authorization': Joi.string() }).unknown()
+      validate:
+        failAction: undefined # <fail action method to handle Joi validation errors>
+        abortEarly: false
+        stripUnknown: true
+
+    userModelView = new UserModelView server, routingOptions
 
     server.route userModelView.list()   # GET /users
     server.route userModelView.get()    # GET /users/{id}

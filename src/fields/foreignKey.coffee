@@ -79,6 +79,8 @@ class ForeignKey extends BaseField
       return finalQuery.then (result) =>
         if result.rows[0].exists is false
           @attributes.errorMessages['foreignKey'] || "Specified #{@attributes.name} does not exist!"
+      .catch (error) ->
+        throw error
     return
 
   getDbField: (val) =>

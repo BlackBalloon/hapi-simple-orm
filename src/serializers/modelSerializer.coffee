@@ -119,6 +119,8 @@ class ModelSerializer extends Serializer
               return serializer.getData().then (values) ->
                 return values
             .catch (error) ->
+              if model.metadata.errorLogger?
+                model.metadata.errorLogger.error error
               throw error
 
   # returns array of related objects and applies related serializer to each of them
@@ -173,6 +175,8 @@ class ModelSerializer extends Serializer
               return serializer.getData().then (values) ->
                 return values
             .catch (error) ->
+              if model.metadata.errorLogger?
+                model.metadata.errorLogger.error error
               throw error
 
   # return array of M2O relation e.g. users of specified account category
@@ -215,6 +219,8 @@ class ModelSerializer extends Serializer
               return serializer.getData().then (values) ->
                 return values
           .catch (error) ->
+            if model.metadata.errorLogger?
+              model.metadata.errorLogger.error error
             throw error
 
   _getSingleObject: (obj) ->
@@ -283,7 +289,9 @@ class ModelSerializer extends Serializer
   create: ->
     @constructor.config.model.objects().create({ payload: @data, direct: true, toObject: true }).then (result) ->
       return result
-    .catch (error) ->
+    .catch (error) =>
+      if @constructor.config.model.metadata.errorLogger?
+        @constructor.config.model.metadata.errorLogger.error error
       throw error
 
   # update specified instance with data passed to the serializer
@@ -294,7 +302,9 @@ class ModelSerializer extends Serializer
     @instance.set @data
     @instance.save({ toObject: true }).then (result) ->
       return result
-    .catch (error) ->
+    .catch (error) =>
+      if @constructor.config.model.metadata.errorLogger?
+        @constructor.config.model.metadata.errorLogger.error error
       throw error
 
   # save the data to database - if the instance was passed we use the
@@ -309,7 +319,9 @@ class ModelSerializer extends Serializer
         @update().then (result) =>
           @data = result
           return result
-    .catch (error) ->
+    .catch (error) =>
+      if @constructor.config.model.metadata.errorLogger?
+        @constructor.config.model.metadata.errorLogger.error error
       throw error
 
   getData: =>
