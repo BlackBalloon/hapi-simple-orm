@@ -94,7 +94,8 @@ class ModelView extends BaseView
         id: "return#{@config.model.metadata.model}"
 
         validate:
-          params: @config.model::attributes[@config.model.metadata.primaryKey].attributes.schema.required()
+          params:
+            "#{@config.model.metadata.primaryKey}": @config.model::attributes[@config.model.metadata.primaryKey].attributes.schema.required()
 
         plugins:
           'hapi-swagger':
