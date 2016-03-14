@@ -65,7 +65,7 @@ describe 'ModelView tests', ->
     routeObject = userModelView.create false, null, options
 
     expect(routeObject).to.have.all.keys ['method', 'path', 'config']
-    expect(routeObject.config).to.have.all.keys ['id', 'description', 'validate', 'handler', 'cors', 'tags']
+    expect(routeObject.config).to.have.all.keys ['id', 'description', 'validate', 'handler', 'cors', 'tags', 'plugins']
 
     expect(routeObject.method).to.equal 'POST'
     expect(routeObject.path).to.equal '/users'
@@ -73,19 +73,5 @@ describe 'ModelView tests', ->
     expect(routeObject.config.id).to.equal options.config.id
     expect(routeObject.config.description).to.equal options.config.description
     expect(routeObject.config.validate).to.have.all.keys ['payload', 'options', 'headers']
-
-    done()
-
-  it 'should test custom ModelView method', (done) ->
-
-    options =
-      config:
-        cors: false
-        handler: {}
-        validate:
-          params: undefined
-
-    obj = userModelView.get(false, null, options)
-    console.log obj
 
     done()

@@ -55,7 +55,7 @@ class ForeignKey extends BaseField
       if _.has attributes[0], 'required'
         _.extend attributes[0], { 'schema': Joi.number().integer().positive().required() }
       else
-        _.extend attributes[0], { 'schema': Joi.number().integer().positive().allow(null) }
+        _.extend attributes[0], { 'schema': Joi.number().integer().positive() }
 
     @acceptedParameters = _.union @constructor.acceptedParameters, @foreignKeyParameters
     @validationMethods = _.extend @constructor.validationMethods, @foreignKeyValidationMethods
