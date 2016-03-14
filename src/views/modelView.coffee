@@ -157,7 +157,7 @@ class ModelView extends BaseView
             responses:
               '200':
                 'description': 'Success'
-                'schema': Joi.object({ "#{@config.pluralName}": Joi.array().items(@config.model.getSchema) }).label(@config.pluralName)
+                'schema': Joi.object({ items: Joi.array().items(@config.model.getSchema) }).label(@config.pluralName)
               '400':
                 'description': 'Bad request'
               '401':
