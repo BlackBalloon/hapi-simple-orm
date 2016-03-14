@@ -145,6 +145,8 @@ class BaseModel
       schema = val.attributes.schema
       if val.attributes.required and not partial
         schema = schema.required()
+      else
+        schema = schema.allow(null)
       schema
 
   # constructor for Model
