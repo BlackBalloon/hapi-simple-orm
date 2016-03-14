@@ -102,7 +102,6 @@ class ModelView extends BaseView
             responses:
               '200':
                 'description': 'Success'
-                'schema': @config.model.getSchema()
               '400':
                 'description': 'Bad request'
               '401':
@@ -157,7 +156,6 @@ class ModelView extends BaseView
             responses:
               '200':
                 'description': 'Success'
-                'schema': Joi.array().items(@config.model.getSchema())
               '400':
                 'description': 'Bad request'
               '401':
@@ -210,7 +208,6 @@ class ModelView extends BaseView
             responses:
               '201':
                 'description': 'Created'
-                'schema': @config.model.getSchema()
               '400':
                 'description': 'Bad request/validation error'
               '401':
@@ -272,7 +269,6 @@ class ModelView extends BaseView
             responses:
               '200':
                 'description': 'Updated'
-                'schema': @config.model.getSchema()
               '400':
                 'description': 'Bad request/validation error'
               '401':

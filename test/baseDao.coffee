@@ -51,8 +51,6 @@ describe 'BaseDAO tests', ->
 
       accountCategory = new AccountCategory data
 
-      console.log User.getSchema().accountCategory
-
       accountCategory.save().then (result) ->
 
         result.id.should.equal 1
