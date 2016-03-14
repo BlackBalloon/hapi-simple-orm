@@ -281,7 +281,7 @@ class ModelView extends BaseView
                 'description': 'Not found'
 
         handler: (request, reply) =>
-          @config.model.objects().getById({ val: request.params.id }).then (instance) ->
+          @config.model.objects().getById({ val: request.params.id }).then (instance) =>
             if instance?
               instance.set request.payload
               instance.save().then (result) =>
