@@ -102,6 +102,7 @@ class ModelView extends BaseView
             responses:
               '200':
                 'description': 'Success'
+                'schema': Joi.object(@config.model.getSchema()).label(@config.model.metadata.model)
               '400':
                 'description': 'Bad request'
               '401':
@@ -156,6 +157,7 @@ class ModelView extends BaseView
             responses:
               '200':
                 'description': 'Success'
+                'schema': Joi.object({ "#{@config.pluralName}": Joi.array().items(@config.model.getSchema) }).label(@config.pluralName)
               '400':
                 'description': 'Bad request'
               '401':
@@ -208,6 +210,7 @@ class ModelView extends BaseView
             responses:
               '201':
                 'description': 'Created'
+                'schema': Joi.object(@config.model.getSchema()).label(@config.model.metadata.model)
               '400':
                 'description': 'Bad request/validation error'
               '401':
@@ -269,6 +272,7 @@ class ModelView extends BaseView
             responses:
               '200':
                 'description': 'Updated'
+                'schema': Joi.object(@config.model.getSchema()).label(@config.model.metadata.model)
               '400':
                 'description': 'Bad request/validation error'
               '401':
