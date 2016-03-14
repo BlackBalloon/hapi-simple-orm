@@ -296,7 +296,8 @@ class ModelView extends BaseView
                 else
                   reply result
               .catch (error) ->
-                return reply Boom.badRequest error
+                # TODO: add custom ValidationError class in order to distinguish the reply message (Boom or simply error)
+                return reply(error).code(400)
             else
               return reply Boom.notFound @config.errorMessages.notFound || "#{@config.model.metadata.model} does not exist"
 
