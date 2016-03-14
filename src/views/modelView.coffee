@@ -6,26 +6,20 @@ Boom        = require 'boom'
 
 BaseView    = require './baseView'
 
-optionsAllowedAttributes = [
-  'security'
-  'headersValidation'
-  'validate'
-]
-
 
 class ModelView extends BaseView
 
   # every 'ModelView' instance must obtain two params
   # @param [Object] server current server's instance
   # @param [Object] options options of current routing module
-  constructor: (@server, @options) ->
+  constructor: (@server, @defaultOptions) ->
     # check if Model was specified in configuration attribute of the ModelView
-    if not @config.model?
-      throw new Error 'You must specify \'config.model\' attribute of ModelView!'
+    if @config? and not @config.model?
+      throw new Error 'You must specify \'config.model\' class attribute of ModelView!'
 
     # server and options are required parameters
-    if not @server? or not @options?
-      throw new Error 'You need to pass \'server\' and \'options\' to ModelView constructor!'
+    if not @server?
+      throw new Error 'You need to pass \'server\' instance to ModelView constructor!'
 
     # set default errorMessages attribute of configuration to empty object {}
     @config.errorMessages ?= {}
@@ -35,55 +29,62 @@ class ModelView extends BaseView
     # if serializer was not specified in the configuration, set it to undefined
     @config.serializer ?= undefined
 
-    # assignValue is used in 'pre' attribute of route object
-    # translates UpperCase to camelCase e.g. AccountCategory will become accountCategory
-    @config.assignValue = @config.model.metadata.model.substr(0, 1).toLowerCase() + @config.model.metadata.model.substr(1)
+    super
 
-    _.each @options, (val, key) ->
-      if key not in optionsAllowedAttributes
-        throw new Error "Attribute '#{key}' is not accepted in 'options' parameter!"
+  # extend defaultOptions with extraOptions
+  # works recursively
+  # @params [Object] defaultOptions defaultOptions of this ModelView
+  # @params [Object] extraOptions additional options passed to route method
+  __extendProperties: (defaultOptions, extraOptions) ->
+    _.each extraOptions, (val, key) =>
+      if val? and val.constructor? and val.constructor.name is 'Object' and not (_.isEmpty val)
+        defaultOptions[key] = defaultOptions[key] or {}
+        @__extendProperties defaultOptions[key], val
+      else
+        defaultOptions[key] = val
+    defaultOptions
 
-    ###
-    options obj:
-    {
-      security: {
-        hsts: true
-        xframe:
-          rule: 'sameorigin'
-        xss: true
-        noOpen: true
-        noSniff: true
-      }
-      headersValidation: Joi.object()
-      validate: {
-        failAction: (request, reply, source, error)
-        options: {
-          abortEarly: boolean
-          stripUnknown: boolean
-        }
-      }
-    }
-    ###
+  # method which is used to extend (or overwrite) current routing object
+  # @param [Object] routeObject current route object and it's attributes
+  # @param [Object] options options that will be used to extend/overwrite existing routeObject
+  _extendRouteObject: (routeObject, options) ->
+    if options? and _.isObject(options)
+      # separately assign method and path attributes of the route, if they were passed
+      routeObject.method = options.method or routeObject.method
+      routeObject.path = options.path or routeObject.path
 
-    # if options was not passed, set it to empty object
-    @options ?= {}
+    # if 'options.config' passed to routing method is undefined, set it to empty object
+    options.config ?= {}
 
-    # security headers
-    @options.security ?= undefined
-    # validation of request headers e.g. 'authorization' header
-    @options.headersValidation ?= undefined
-    # validate options - failAction and other options
-    # failAction must be a method with definition like (request, reply, source, error)
-    # and needs to finish execution by calling '.reply()'
-    @options.validate ?= {}
+    if (rejectedOptions = _.difference _.keys(options.config), @constructor.getAcceptableRouteOptions()).length > 0
+      throw new Error "Options #{rejectedOptions} are not accepted in route object!"
 
-    # validation of path parameters e.g. id
-    @paramsValidation = {}
-    primaryKey = @config.model.metadata.primaryKey
-    @paramsValidation[primaryKey] = @config.model::attributes[primaryKey].attributes.schema.required()
+    # here we extend current route object with combination of 'defaultOptions' and 'options'
+    # passed directly to the current routing method
+    # result is full route configuration object
+    # but first we need to create copy of 'defaultOptions' in order to omit reference problems
+    defaultOptionsCopy = @__extendProperties {}, @defaultOptions
+    @__extendProperties routeObject.config, (@__extendProperties(defaultOptionsCopy, _.clone(options.config)))
 
-  get: (ifSerialize, serializer) =>
-    {
+    # last check if the route object has config.handler method assigned
+    if not (typeof routeObject.config.handler is 'function')
+      # if not, throw an error
+      throw new Error "The 'config.handler' attribute of route should be a function."
+
+    # return extended/overwritten route object
+    routeObject
+
+  # GET - return single instance of Model
+  # @param [Boolean] ifSerialize boolean which defines if result should be serialized
+  # @param [Object] serializer serializer's Class to be used on the instance
+  # @param [Object] options additional options which will extend/overwrite current route object
+  get: (ifSerialize, serializer, options) =>
+    if options? and not (_.isObject options)
+      throw new Error "'options' parameter of routing method should be an object"
+
+    options ?= { config: {} }
+
+    routeObject =
       method: 'GET'
       path: "/#{@config.model.metadata.tableName}/{#{@config.model.metadata.primaryKey}}"
 
@@ -92,15 +93,21 @@ class ModelView extends BaseView
         tags: @config.tags
         id: "return#{@config.model.metadata.model}"
 
-        security: @options.security
-        cors: true
-
         validate:
-          headers: @options.headersValidation
-          params: @paramsValidation
+          params: @config.model::attributes[@config.model.metadata.primaryKey].attributes.schema.required()
 
         plugins:
-          'hapi-swagger': @server.methods.swaggerRouteResponse('get', false)
+          'hapi-swagger':
+            responses:
+              '200':
+                'description': 'Success'
+                'schema': @config.model.getSchema()
+              '400':
+                'description': 'Bad request'
+              '401':
+                'description': 'Unauthorized'
+              '404':
+                'description': 'Not found'
 
         handler: (request, reply) =>
           @config.model.objects().getById({ val: request.params.id }).then (result) =>
@@ -116,13 +123,26 @@ class ModelView extends BaseView
               else
                 return reply result
             else
-              return reply Boom.notFound(@config.errorMessages['notFound'] || "#{@config.model.metadata.model} does not exist")
+              return reply Boom.notFound(@config.errorMessages['notFound'] or "#{@config.model.metadata.model} does not exist")
           .catch (error) ->
             reply Boom.badRequest error
-    }
 
-  list: (ifSerialize, serializer) ->
-    {
+    if options? and _.isObject(options)
+      @_extendRouteObject routeObject, options
+
+    routeObject
+
+  # GET - return all instances of current Model
+  # @param [Boolean] ifSerialize boolean which defines if result should be serialized
+  # @param [Object] serializer serializer's Class to be used on the instances
+  # @param [Object] options additional options which will extend/overwrite current route object
+  list: (ifSerialize, serializer, options) =>
+    if options? and not (_.isObject options)
+      throw new Error "'options' parameter of routing method should be an object"
+
+    options ?= { config: {} }
+
+    routeObject =
       method: 'GET'
       path: "/#{@config.model.metadata.tableName}"
 
@@ -131,14 +151,16 @@ class ModelView extends BaseView
         tags: @config.tags
         id: "returnAll#{@config.pluralName}"
 
-        security: @options.security
-        cors: true
-
-        validate:
-          headers: @options.headersValidation
-
         plugins:
-          'hapi-swagger': @server.methods.swaggerRouteResponse('get', true)
+          'hapi-swagger':
+            responses:
+              '200':
+                'description': 'Success'
+                'schema': Joi.array().items(@config.model.getSchema())
+              '400':
+                'description': 'Bad request'
+              '401':
+                'description': 'Unauthorized'
 
         handler: (request, reply) =>
           @config.model.objects().all().then (objects) =>
@@ -154,10 +176,23 @@ class ModelView extends BaseView
               reply objects
           .catch (error) ->
             reply Boom.badRequest error
-    }
 
-  create: (ifSerialize, serializer) =>
-    {
+    if options? and _.isObject(options)
+      @_extendRouteObject routeObject, options
+
+    routeObject
+
+  # POST - create new instance of current Model
+  # @param [Boolean] ifSerialize boolean which defines if result should be serialized
+  # @param [Object] serializer serializer's Class to be used on created instance
+  # @param [Object] options additional options which will extend/overwrite current route object
+  create: (ifSerialize, serializer, options) =>
+    if options? and not (_.isObject options)
+      throw new Error "'options' parameter of routing method should be an object"
+
+    options ?= { config: {} }
+
+    routeObject =
       method: 'POST'
       path: "/#{@config.model.metadata.tableName}"
 
@@ -166,17 +201,19 @@ class ModelView extends BaseView
         tags: @config.tags
         id: "addNew#{@config.model.metadata.model}"
 
-        security: @options.security
-        cors: true
-
         validate:
-          headers: @options.headersValidation
           payload: @config.model.getSchema()
-          failAction: @options.validate.failAction
-          options: @options.validate.options
 
         plugins:
-          'hapi-swagger': @options.headersValidation
+          'hapi-swagger':
+            responses:
+              '201':
+                'description': 'Created'
+                'schema': @config.model.getSchema()
+              '400':
+                'description': 'Bad request/validation error'
+              '401':
+                'description': 'Unauthorized'
 
         handler: (request, reply) =>
           if request.auth.credentials?
@@ -199,10 +236,23 @@ class ModelView extends BaseView
               reply(result).code(201)
           .catch (error) ->
             reply(error).code(400)
-    }
 
-  update: (ifSerialize, serializer) =>
-    {
+    if options? and _.isObject(options)
+      @_extendRouteObject routeObject, options
+
+    routeObject
+
+  # PUT - update specified instance of current Model
+  # @param [Boolean] ifSerialize boolean which defines if result should be serialized
+  # @param [Object] serializer serializer's Class to be used on updated instance
+  # @param [Object] options additional options which will extend/overwrite current route object
+  update: (ifSerialize, serializer, options) =>
+    if options? and not (_.isObject options)
+      throw new Error "'options' parameter of routing method should be an object"
+
+    options ?= { config: {} }
+
+    routeObject =
       method: 'PUT'
       path: "/#{@config.model.metadata.tableName}/{#{@config.model.metadata.primaryKey}}"
 
@@ -211,58 +261,68 @@ class ModelView extends BaseView
         tags: @config.tags
         id: "update#{@config.model.metadata.model}"
 
-        security: @options.security
-        cors: true
-
         validate:
-          headers: @options.headersValidation
-          params: @paramsValidation
+          params: @config.model::attributes[@config.model.metadata.primaryKey].attributes.schema.required()
           payload: @config.model.getSchema()
-          failAction: @options.validate.failAction
-          options: @options.validate.options
 
         plugins:
-          'hapi-swagger': @server.methods.swaggerRouteResponse('put')
-
-        pre: [
-          {
-            assign: @config.assignValue
-            method: (request, reply) =>
-              @config.model.objects().getById({ val: request.params.id }).then (result) ->
-                reply result
-          }
-        ]
+          'hapi-swagger':
+            responses:
+              '200':
+                'description': 'Updated'
+                'schema': @config.model.getSchema()
+              '400':
+                'description': 'Bad request/validation error'
+              '401':
+                'description': 'Unauthorized'
+              '404':
+                'description': 'Not found'
 
         handler: (request, reply) =>
-          if request.pre[@config.assignValue]?
-            request.pre[@config.assignValue].set request.payload
-            request.pre[@config.assignValue].save().then (result) =>
+          @config.model.objects().getById({ val: request.params.id }).then (instance) ->
+            if instance?
+              instance.set request.payload
+              instance.save().then (result) =>
+                if ifSerialize
+                  serializerClass = if serializer then serializer else @config.serializer
+                  if not serializerClass?
+                    throw new Error "There is no serializer specified for #{@constructor.name}"
 
-              if ifSerialize
-                serializerClass = if serializer then serializer else @config.serializer
-                if not serializerClass?
-                  throw new Error "There is no serializer specified for #{@constructor.name}"
+                  serializerInstance = new serializerClass data: result
+                  serializerInstance.getData().then (serializerData) ->
+                    reply serializerData
+                else
+                  reply result
+              .catch (error) ->
+                return reply Boom.badRequest error
+            else
+              return reply Boom.notFound @config.errorMessages.notFound || "#{@config.model.metadata.model} does not exist"
 
-                serializerInstance = new serializerClass data: result
-                serializerInstance.getData().then (serializerData) ->
-                  reply serializerData
-              else
-                reply result
-            .catch (error) ->
-              return reply(error).code(400)
-          else
-            return reply Boom.notFound @config.errorMessages.notFound || "#{@config.model.metadata.model} does not exist"
-    }
+    if options? and _.isObject(options)
+      @_extendRouteObject routeObject, options
 
-  partialUpdate: (ifSerialize, serializer) ->
-    obj = @update ifSerialize, serializer
+    routeObject
 
-    obj.config.validate.payload = @config.model.getSchema(undefined, true)
+  # PATCH - perform partial update of specified instance of current Model
+  # @param [Boolean] ifSerialize boolean which defines if result should be serialized
+  # @param [Object] serializer serializer's Class to be used on updated instance
+  # @param [Object] options additional options which will extend/overwrite current route object
+  partialUpdate: (ifSerialize, serializer, options) =>
+    routeObject = @update ifSerialize, serializer, options
 
-    obj
+    routeObject.config.validate.payload = @config.model.getSchema(undefined, true)
 
-  delete: =>
-    {
+    routeObject
+
+  # DELETE - delete specified instance of current Model, returns 1 if DELETE was successfull
+  # @param [Object] options additional options which will extend/overwrite current route object
+  delete: (options) =>
+    if options? and not (_.isObject options)
+      throw new Error "'options' parameter of routing method should be an object"
+
+    options ?= { config: {} }
+
+    routeObject =
       method: 'DELETE'
       path: "/#{@config.model.metadata.tableName}/{#{@config.model.metadata.primaryKey}}"
 
@@ -271,15 +331,20 @@ class ModelView extends BaseView
         tags: @config.tags
         id: "delete#{@config.model.metadata.model}"
 
-        security: @options.security
-        cors: true
-
         validate:
-          headers: @options.headersValidation
-          params: @paramsValidation
+          params: @config.model::attributes[@config.model.metadata.primaryKey].attributes.schema.required()
 
         plugins:
-          'hapi-swagger': @server.methods.swaggerRouteResponse('delete')
+          'hapi-swagger':
+            responses:
+              '200':
+                'description': 'Deleted'
+              '400':
+                'description': 'Bad request'
+              '401':
+                'description': 'Unauthorized'
+              '404':
+                'description': 'Not found'
 
         handler: (request, reply) =>
           whoDeleted = if request.auth.credentials? then request.auth.credentials.user.id else undefined
@@ -294,7 +359,11 @@ class ModelView extends BaseView
             return reply Boom.notFound @config.errorMessages.notFound || "#{@config.model.metadata.model} does not exist!"
           .catch (error) ->
             reply Boom.badRequest error
-    }
+
+    if options? and _.isObject(options)
+      @_extendRouteObject routeObject, options
+
+    routeObject
 
 
 module.exports = ModelView

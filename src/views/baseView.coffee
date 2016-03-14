@@ -10,6 +10,17 @@ acceptableMethods = [
   'delete'
 ]
 
+acceptableRouteOptions = [
+  'app', 'auth', 'bind', 'cache', 'cors', 'ext', 'files', 'handler', 'id', 'isInternal',
+  'json', 'jsonp', 'payload', 'plugins', 'pre', 'response', 'security', 'state', 'validate',
+  'timeout', 'description', 'notes', 'tags'
+]
+
+acceptableDefaultOptions = [
+  'app', 'auth', 'bind', 'cache', 'cors', 'files', 'json', 'jsonp', 'plugins',
+  'pre', 'security', 'state', 'validate', 'timeout', 'tags'
+]
+
 
 class BaseView
 
@@ -93,7 +104,38 @@ class BaseView
 
     @constructor._decoratorMethodBody @, method, arguments, 'payload', payload
 
-  constructor: (@server, @options) ->
+  @getAcceptableRouteOptions: ->
+    acceptableRouteOptions
+
+  constructor: (@server, @defaultOptions) ->
+    # if no default options were passed, set it to an empty object
+    @defaultOptions ?= {}
+
+  # method that is used to generate full route object via options passed to the constructor
+  # @params [Object] options route options according to Hapi.js route configuration documentation
+  _getFullConfiguration: (options) ->
+    # throw an error if 'options' is not an object'
+    if not (_.isObject options)
+      throw new Error "'options' of route should be an object"
+
+    # throw an error if options does not have attributes 'method', 'path' or 'config'
+    if 'method' not of options or 'path' not of options or 'config' not of options
+      throw new Error "'method', 'path' and 'config' attributes are required for route options!"
+
+    routeObject = {}
+    # add method, path and config to route options
+    _.extend routeObject, { method: options.method, path: options.path, config: {} }
+
+    # extend route object's config attribute with passed options
+    _.each acceptableRouteOptions, (val) ->
+      routeObject.config[val] = options.config[val] or @defaultOptions[val] or undefined
+
+    # throw an error if routeObject's config.handler is undefined or is not a function
+    if not routeObject.config.handler? or not (typeof routeObject.config.handler is 'function')
+      throw new Error "Route options must have 'config.handler()' method defined!"
+
+    routeObject
+
 
   # returns basic configuration current route method
   # basing on previously defined decorators
@@ -105,7 +147,7 @@ class BaseView
   # @param [Object] params - object defining validation of path parameters
   # @param [Object] responses - object specifying responses of current view for documentation
   # @param [Object] payload - object fedining validation of request payload
-  _getBasicConfiguration: ({ method, description, id, path, many, params, responses, payload } = {}) ->
+  getBasicConfiguration: ({ method, description, id, path, many, params, responses, payload } = {}) ->
     {
       method: method
       path: path
@@ -115,16 +157,17 @@ class BaseView
         tags: @config.tags
         id: id
 
-        security: @options.security
+        security: @defaultOptions.security
         cors: true
 
         validate:
-          headers: @options.headersValidation
+          headers: @defaultOptions.headersValidation
           params: params
           payload: payload
 
         plugins:
-          'hapi-swagger': @server.methods.swaggerRouteResponse(method, many, responses)
+          'hapi-swagger':
+            responses: responses
     }
 
 
