@@ -161,13 +161,16 @@ class BaseView
         cors: true
 
         validate:
-          headers: @defaultOptions.headersValidation
-          params: params
-          payload: payload
+          headers: @defaultOptions.validate.headers
+          params: if params? then params
+          payload: if payload? then payload
 
         plugins:
           'hapi-swagger':
-            responses: responses
+            responses: _.mapObject responses, (val, key) ->
+              if val.constructor.name is 'String'
+                return { 'description': val }
+              return val
     }
 
 

@@ -313,6 +313,15 @@ class ModelView extends BaseView
   partialUpdate: (ifSerialize, serializer, options) =>
     routeObject = @update ifSerialize, serializer, options
 
+    # it is necessary to change method to PATCH and both description and id of this route method
+    # to prevent situation in which it overlaps with '.update()' method
+    routeObject.method = 'PATCH'
+    routeObject.config.description = "Partial update of #{@config.model.metadata.model}"
+    routeObject.config.id = "partialUpdate#{@config.model.metadata.model}"
+
+    # we set the 'partial' parameter of 'getSchema()' method to true
+    # in order to return the schema without 'required' attribute for required fields
+    # because PATCH allows to update only part of object (model's instance)
     routeObject.config.validate.payload = @config.model.getSchema(undefined, true)
 
     routeObject
