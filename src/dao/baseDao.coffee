@@ -254,7 +254,7 @@ class BaseDAO
     if direct
       instance = new @config.model data
       validationPromise = instance.validate()
-      insertData = instance._toDatabaseFields()
+      data = instance._toDatabaseFields()
 
     return Promise.all([validationPromise]).then (validationErrors) =>
       # if the model validation returned object with any keys
@@ -265,7 +265,7 @@ class BaseDAO
         throw validationErrors[0]
 
       return knex(@config.model.metadata.tableName)
-        .insert(insertData, returning)
+        .insert(data, returning)
         .then (rows) =>
           # if toObject was set to true we need to check if created result
           # was returned from the database, otherwise we should return empty result
