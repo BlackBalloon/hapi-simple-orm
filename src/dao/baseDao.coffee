@@ -251,7 +251,7 @@ class BaseDAO
     # if this method is called directly on DAO
     # then we need to create new instance of the model, perform validation
     # and translate data to database representation of the model
-    if direct?
+    if direct
       instance = new @config.model data
       validationPromise = instance.validate()
       insertData = instance._toDatabaseFields()

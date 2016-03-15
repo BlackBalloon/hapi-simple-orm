@@ -90,7 +90,7 @@ class BaseField
 
     # we omit current instance when finding unique fields
     # that is why we check the primary key if it is set
-    if primaryKey? and obj[primaryKey]?
+    if primaryKey?
       query += " AND #{obj.constructor.metadata.primaryKey} <> ?"
       bindings.push primaryKey
     query += ")"

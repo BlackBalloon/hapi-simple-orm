@@ -273,7 +273,7 @@ class BaseModel
         @constructor.objects().update({ obj: @, returning: returning, toObject: toObject }).then (res) ->
           return res
       else
-        @constructor.objects().create({ data: @_toDatabaseFields(), returning: returning, toObject: toObject, direct: true }).then (res) ->
+        @constructor.objects().create({ data: @_toDatabaseFields(), returning: returning, toObject: toObject, direct: false }).then (res) ->
           return res
     .catch (error) =>
       if @constructor.metadata.errorLogger?
