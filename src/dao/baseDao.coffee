@@ -40,18 +40,18 @@ class BaseDAO
   # @param [Any] val value of the primary key
   # @param [Array] returning array of fields to be returned from the DB
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
-  getById: ({ val, returning, toObject } = {}) ->
+  getById: ({ pk, returning, toObject } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
 
-    if not val?
-      throw new Error "'getById' method requires value for 'val' attribute!"
+    if not pk?
+      throw new Error "'getById' method requires value for 'pk' parameter!"
 
     returning ?= @config.returning.basic
 
     knex(@config.model.metadata.tableName)
-      .where(@config.model.metadata.primaryKey, val)
+      .where(@config.model.metadata.primaryKey, pk)
       .andWhere('is_deleted', false)
       .select(returning)
       .then (rows) =>
@@ -79,7 +79,7 @@ class BaseDAO
     toObject ?= true
 
     if not lookup?
-      throw new Error "Lookup object is required!"
+      throw new Error "'get()' method requires value for 'lookup' parameter!"
 
     returning ?= @config.returning.basic
 
@@ -120,6 +120,11 @@ class BaseDAO
     # otherwise, if 'orderBy' is object, we check if it has 'column' attribute and if it exists in Model's attributes
     else if orderBy? and _.isObject(orderBy) and 'column' in _.keys(orderBy) and orderBy.column of @config.model::attributes
       orderBy.column = @config.model::attributes[orderBy.column].attributes.dbField
+
+      # if the direction attribute is present in orderBy, we check if it is one of ['asc', 'desc']
+      if orderBy.direction? and not (orderBy.direction in ['asc', 'desc'])
+        throw new Error "'direction' attribute of 'orderBy' object should be one of: asc, desc!"
+
       # if there was no 'direction' attribute in 'orderBy' object, we set default value to 'asc'
       orderBy.direction ?= 'asc'
     else if orderBy?
@@ -172,6 +177,11 @@ class BaseDAO
     # otherwise, if 'orderBy' is object, we check if it has 'column' attribute and if it exists in Model's attributes
     else if orderBy? and _.isObject(orderBy) and 'column' in _.keys(orderBy) and orderBy.column of @config.model::attributes
       orderBy.column = @config.model::attributes[orderBy.column].attributes.dbField
+
+      # if the direction attribute is present in orderBy, we check if it is one of ['asc', 'desc']
+      if orderBy.direction? and not (orderBy.direction in ['asc', 'desc'])
+        throw new Error "'direction' attribute of 'orderBy' object should be one of: asc, desc!"
+
       # if there was no 'direction' attribute in 'orderBy' object, we set default value to 'asc'
       orderBy.direction ?= 'asc'
     else if orderBy?
@@ -224,14 +234,15 @@ class BaseDAO
 
 
   # save new instance of specified model
-  # @param [Object] payload data of the instance to be saved
+  # @param [Object] data data of the instance to be saved
   # @param [Array] returning array of fields to be returned from DB
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
   # @param [Boolean] direct boolean defining if this method is used directly on Model class
-  create: ({ payload, returning, toObject, direct } = {}) ->
+  create: ({ data, returning, toObject, direct } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
+    direct ?= true
 
     returning ?= @config.returning.basic
 
@@ -239,11 +250,11 @@ class BaseDAO
 
     # if this method is called directly on DAO
     # then we need to create new instance of the model, perform validation
-    # and translate payload to database representation of the model
+    # and translate data to database representation of the model
     if direct?
-      instance = new @config.model payload
+      instance = new @config.model data
       validationPromise = instance.validate()
-      payload = instance._toDatabaseFields()
+      insertData = instance._toDatabaseFields()
 
     return Promise.all([validationPromise]).then (validationErrors) =>
       # if the model validation returned object with any keys
@@ -254,7 +265,7 @@ class BaseDAO
         throw validationErrors[0]
 
       return knex(@config.model.metadata.tableName)
-        .insert(payload, returning)
+        .insert(insertData, returning)
         .then (rows) =>
           # if toObject was set to true we need to check if created result
           # was returned from the database, otherwise we should return empty result
@@ -346,6 +357,8 @@ class BaseDAO
 
     if not obj?
       throw new Error "'update()' method needs model instance as 'obj' parameter!"
+    else if obj? and not (obj instanceof @config.model)
+      throw new Error "'obj' attribute passed to #{@constructor.name} 'update()' method should be an instance of #{@config.model.metadata.model}"
 
     returning ?= @config.returning.basic
 

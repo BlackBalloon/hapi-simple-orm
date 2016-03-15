@@ -23,7 +23,7 @@ class ManyToMany
       return value
 
     # default Joi validation schema for M2M relation is array of positive integers
-    if not _.has @attributes, 'schema'
+    if not(_.has @attributes, 'schema')
       _.extend @attributes, { schema: Joi.array(Joi.number().integer().positive()) }
 
     # we add the abstract attribute to the relation, because it is not directly saved
@@ -47,7 +47,7 @@ class ManyToMany
     # @param [String] name name of the attributes e.g. 'parameters'
     constructor: (@obj, @name, field) ->
       @toModel = require field.attributes.toModel
-      @thisModel = @obj.constructor.metadata.tableName
+      @thisModel = @obj.constructor.metadata
       @through = field.attributes.through
       @throughFields = field.attributes.throughFields
       @returning = _.map field.attributes.returning, (val) =>
@@ -58,9 +58,8 @@ class ManyToMany
     all: ({ toObject } = {}) =>
       knex(@toModel.metadata.tableName)
         .select(@returning)
-        .leftJoin(@through, "#{@toModel.metadata.tableName}.id", "#{@through}.#{@throughFields[1]}")
-        .leftJoin(@thisModel, "#{@thisModel}.id", "#{@through}.#{@throughFields[0]}")
-        .where("#{@thisModel}.id", @obj[@obj.constructor.metadata.primaryKey])
+        .leftJoin(@through, "#{@toModel.metadata.tableName}.#{@toModel.metadata.primaryKey}", "#{@through}.#{@throughFields[1]}")
+        .where("#{@through}.#{@throughFields[0]}", @obj[@obj.constructor.metadata.primaryKey])
         .andWhere("#{@toModel.metadata.tableName}.is_deleted", false)
         .then (result) =>
           if toObject?

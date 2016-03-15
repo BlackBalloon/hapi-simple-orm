@@ -1,11 +1,12 @@
 'use strict'
 
 Joi           = require 'joi'
-BaseModel     = require './../model/baseModel'
 _             = require 'underscore'
 knexConf      = require process.cwd() + '/knexfile'
 knex          = require('knex')(knexConf[process.env.NODE_ENV])
 Promise       = require 'bluebird'
+
+moduleKeywords = ['extended', 'included']
 
 
 class BaseField
@@ -35,7 +36,6 @@ class BaseField
     'abstract'        # defines if field should be saved to database
     'name'            # defines 'camelCase' readable name
     'primaryKey'      # defines if this field is a primary key
-    'modelMeta'       # defines attributes of the Model instance
     'errorMessages'   # custom error messages for validation
     'set'             # method for explicit setting the field's value
     'get'             # method for explicit retrieve the field's value
@@ -54,27 +54,21 @@ class BaseField
     @attributes = _.reduce @attributes, (memo, value) ->
       return value
 
+    _.each @attributes, (val, key) =>
+      if key not in @constructor.acceptedParameters
+        throw new TypeError "Key '#{key}' is not accepted in field #{@attributes.name}!"
+
     @attributes.errorMessages ?= {}
 
     # if current field has 'primaryKey' attribute set and it does not have
     # its 'name' specified, then we set the 'name' attribute to 'id'
-    if @attributes.primaryKey and not _.has @attributes, 'name'
+    if @attributes.primaryKey and not(_.has @attributes, 'name')
       @attributes['name'] = 'id'
 
     # if specify the 'dbField' attribute for current field basing on
     # it's 'name' attribute value - name is translated from camelCase to snake_case
-    if not (@constructor.name is 'ForeignKey') and _.has @attributes, 'name'
+    if not (@constructor.name is 'ForeignKey') and _.has(@attributes, 'name')
       @attributes['dbField'] = @getDbField @attributes.name
-
-    if not @acceptedParameters?
-      @acceptedParameters = _.clone @constructor.acceptedParameters
-
-    if not @validationMethods?
-      @validationMethods = _.clone @constructor.validationMethods
-
-    _.each @attributes, (val, key) =>
-      if key not in @acceptedParameters
-        throw new TypeError "Key '#{key}' is not accepted in field #{@attributes.name}!"
 
   # Instance method which validates specified attribute against it's Joi schema
   # @param [Any] value value of current field
@@ -88,16 +82,16 @@ class BaseField
   # @param [Any] value value of current field
   # @param [Any] primaryKey named parameter, value of primary key of current model's instance
   # @param [Object] trx transaction object in case when multiple records will be impacted
-  validateUnique: (value, { primaryKey, trx }) =>
-    query = "SELECT EXISTS(SELECT 1 FROM #{@attributes.modelMeta.tableName}
+  validateUnique: (value, { primaryKey, trx, obj }) =>
+    query = "SELECT EXISTS(SELECT 1 FROM #{obj.constructor.metadata.tableName}
               WHERE #{@attributes.dbField} = ?
               AND is_deleted = false"
     bindings = [value]
 
     # we omit current instance when finding unique fields
     # that is why we check the primary key if it is set
-    if primaryKey?
-      query += " AND #{@attributes.modelMeta.primaryKey} <> ?"
+    if primaryKey? and obj[primaryKey]?
+      query += " AND #{obj.constructor.metadata.primaryKey} <> ?"
       bindings.push primaryKey
     query += ")"
 
@@ -108,7 +102,7 @@ class BaseField
 
     finalQuery.then (result) =>
       if result.rows[0].exists is true
-        @attributes.errorMessages['unique'] || "#{@attributes.modelMeta.model} with this #{@attributes.name} (#{value}) already exists!"
+        @attributes.errorMessages['unique'] || "#{obj.constructor.metadata.model} with this #{@attributes.name} (#{value}) already exists!"
     .catch (error) ->
       throw error
 
@@ -122,8 +116,8 @@ class BaseField
 
     validationPromises = []
     _.each @attributes, (val, key) =>
-      if key of @validationMethods
-        validationPromises.push @[@validationMethods[key]](currentFieldValue, { primaryKey: primaryKey, trx: trx })
+      if key of @constructor.validationMethods
+        validationPromises.push @[@constructor.validationMethods[key]](currentFieldValue, { primaryKey: primaryKey, trx: trx, obj: obj })
 
     Promise.all(validationPromises).then (validationPromisesResults) =>
       returnObj = {}
@@ -138,7 +132,7 @@ class BaseField
   # get 'dbField' attribute for specified 'val'
   # translates 'camelCase' to 'snake_case'
   getDbField: (val) =>
-    if not _.has @attributes, 'dbField'
+    if not(_.has @attributes, 'dbField')
       return @constructor._camelToSnakeCase val
     return @attributes.dbField
 

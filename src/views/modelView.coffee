@@ -111,7 +111,7 @@ class ModelView extends BaseView
                 'description': 'Not found'
 
         handler: (request, reply) =>
-          @config.model.objects().getById({ val: request.params.id }).then (result) =>
+          @config.model.objects().getById({ pk: request.params.id }).then (result) =>
             if result?
               if ifSerialize
                 serializerClass = if serializer then serializer else @config.serializer
@@ -220,7 +220,7 @@ class ModelView extends BaseView
           if request.auth.credentials?
             _.extend request.payload, { whoCreated: request.auth.credentials.user.id }
 
-          @config.model.objects().create({ payload: request.payload, direct: true }).then (result) =>
+          @config.model.objects().create({ data: request.payload }).then (result) =>
             if ifSerialize
               serializerClass = if serializer then serializer else @config.serializer
               if not serializerClass?
@@ -281,7 +281,7 @@ class ModelView extends BaseView
                 'description': 'Not found'
 
         handler: (request, reply) =>
-          @config.model.objects().getById({ val: request.params.id }).then (instance) =>
+          @config.model.objects().getById({ pk: request.params.id }).then (instance) =>
             if instance?
               instance.set request.payload
               instance.save().then (result) =>

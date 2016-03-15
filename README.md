@@ -152,7 +152,7 @@ It also can generate routing objects, that can be passed to `server.route()` met
 
   # direct attribute is set to 'true' because '.create()' method is called
   # directly from the User's model DAO
-  User.objects().create({ payload: data, direct: true }).then (user) ->
+  User.objects().create({ data: data }).then (user) ->
     console.log user
   .catch (error) ->
     throw error
@@ -205,7 +205,7 @@ It also can generate routing objects, that can be passed to `server.route()` met
 
   # then it is possible to combine DAO with serializers:
 
-  User.objects().getById({ val: 1 }).then (user) ->
+  User.objects().getById({ pk: 1 }).then (user) ->
     serializer = new UserSerializer data: user
     serializer.getData().then (serializerData) ->
       console.log serializerData

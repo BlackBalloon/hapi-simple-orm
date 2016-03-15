@@ -2,11 +2,17 @@
 
 server      = require './index'
 
+request     = require 'supertest'
 _           = require 'underscore'
 Joi         = require 'joi'
 chai        = require 'chai'
 
+chai.should()
+expect      = chai.expect
+
 ModelView   = require './../lib/views/modelView'
+BaseField   = require './../lib/fields/baseField'
+ForeignKey  = require './../lib/fields/foreignKey'
 
 User        = require './data/userModel'
 
@@ -30,11 +36,25 @@ class UserModelView extends ModelView
       obj = @getBasicConfiguration arguments['0']
 
       obj.config.handler = (request, reply) ->
-        User.objects().getById({ val: request.params.id }).then (user) ->
+        User.objects().getById({ pk: request.params.id }).then (user) ->
           user.get('accountCategory').then (category) ->
             reply category
         .catch (error) ->
           reply(error).code(400)
+
+      obj
+
+  getUsername:
+    @method('get') \
+    @path('/users/get_username') \
+    @query({ username: Joi.string().required() }) \
+    ->
+      obj = @getBasicConfiguration arguments['0']
+
+      obj.config.handler = (request, reply) ->
+        username = request.query.username + '11'
+
+        return reply { username: username }
 
       obj
 
@@ -115,3 +135,18 @@ describe 'ModelView tests', ->
     expect(routeObject.config.plugins['hapi-swagger'].responses['404']).to.be.an 'object'
 
     done()
+
+  it 'should test query params of custom method', (done) ->
+
+    server.route userModelView.getUsername()
+
+    request('http://localhost:3000')
+      .get('/users/get_username?username=pbienias')
+      .expect(200)
+      .end (error, response) ->
+        if error
+          return done error
+          
+        console.log response.body
+
+        done()

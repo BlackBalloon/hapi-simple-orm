@@ -287,7 +287,7 @@ class ModelSerializer extends Serializer
 
   # create new instance of the model and save it to the database
   create: ->
-    @constructor.config.model.objects().create({ payload: @data, direct: true, toObject: true }).then (result) ->
+    @constructor.config.model.objects().create({ data: @data, toObject: true }).then (result) ->
       return result
     .catch (error) =>
       if @constructor.config.model.metadata.errorLogger?

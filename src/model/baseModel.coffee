@@ -145,7 +145,7 @@ class BaseModel
       schema = val.attributes.schema
       if val.attributes.required and not partial
         schema = schema.required()
-      else
+      else if not val.attributes.required
         schema = schema.allow(null)
       schema
 
@@ -156,16 +156,6 @@ class BaseModel
     manyToManyManager = ManyToMany.getManyToManyManager()
 
     _.each @attributes, (val, key) =>
-      # setting value for 'dbField' attribute of every model's field
-      # if it is not already present in the attributes
-      if not _.has val.attributes, 'dbField'
-        val.attributes.dbField = @constructor._camelToSnakeCase key, @attributes
-
-      # setting value for 'name' attribute of every model's field
-      # if it is not already present in the attributes
-      if not _.has val.attributes, 'name'
-        val.attributes.name = key
-
       # adding many to many related attributes to model's instance
       if val instanceof ManyToMany
         if not _.has val.attributes, 'throughFields'
@@ -178,12 +168,9 @@ class BaseModel
 
       # adding many to one related attributes to model's instance
       if val instanceof ManyToOne
-        if not _.has val.attributes, 'referenceField'
+        if not(_.has val.attributes, 'referenceField')
           val.attributes.referenceField = @constructor.metadata.singular + '_' + @constructor.metadata.primaryKey
         @[key] = new manyToOneManager @, key, val
-
-      # setting model's metadata as an attribute for every field
-      val.attributes.modelMeta = @constructor.metadata
 
     try
       @set properties
@@ -210,22 +197,21 @@ class BaseModel
     if key of @attributes
       if @attributes[key].attributes.get?
         return @attributes[key].attributes.get @
+      # we check if desired attribute is a foreign key
+      # if it is, we need to return referenced Model's instance from DB
+      if @attributes[key] instanceof ForeignKey and @[key]?
+        lookup = {}
+        lookup[@attributes[key].attributes.referenceField] = @[key]
+        return @attributes[key].attributes.referenceModel.objects().get({ lookup: lookup, toObject: toObject })
+          .then (result) ->
+            return result
+          .catch (error) =>
+            if @constructor.metadata.errorLogger?
+              @constructor.metadata.errorLogger.error error
+            throw error
       else
-        # we check if desired attribute is a foreign key
-        # if it is, we need to return referenced Model's instance from DB
-        if @attributes[key] instanceof ForeignKey and @[key]?
-          lookup = {}
-          lookup[@attributes[key].attributes.referenceField] = @[key]
-          return @attributes[key].attributes.referenceModel.objects().get({ lookup: lookup, toObject: toObject })
-            .then (result) ->
-              return result
-            .catch (error) =>
-              if @constructor.metadata.errorLogger?
-                @constructor.metadata.errorLogger.error error
-              throw error
-        else
-          # otherwise we just return value for specified key
-          return @[key]
+        # otherwise we just return value for specified key
+        return @[key]
     else
       throw new TypeError "The '#{key}' field does not match any attribute of model #{@constructor.metadata.model}!"
 
@@ -287,7 +273,7 @@ class BaseModel
         @constructor.objects().update({ obj: @, returning: returning, toObject: toObject }).then (res) ->
           return res
       else
-        @constructor.objects().create({ payload: @_toDatabaseFields(), returning: returning, toObject: toObject }).then (res) ->
+        @constructor.objects().create({ data: @_toDatabaseFields(), returning: returning, toObject: toObject, direct: true }).then (res) ->
           return res
     .catch (error) =>
       if @constructor.metadata.errorLogger?

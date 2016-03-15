@@ -154,7 +154,7 @@ class BaseView
   # @param [Object] params - object defining validation of path parameters
   # @param [Object] responses - object specifying responses of current view for documentation
   # @param [Object] payload - object fedining validation of request payload
-  getBasicConfiguration: ({ method, description, id, path, many, params, responses, payload } = {}) ->
+  getBasicConfiguration: ({ method, description, id, path, many, params, responses, payload, query } = {}) ->
     {
       method: method
       path: path
@@ -171,6 +171,7 @@ class BaseView
           headers: @defaultOptions.validate.headers
           params: if params? then params
           payload: if payload? then payload
+          query: query
 
         plugins:
           'hapi-swagger':

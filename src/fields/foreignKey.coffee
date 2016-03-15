@@ -9,6 +9,15 @@ Joi             = require 'joi'
 BaseField       = require './baseField'
 BaseModel       = require './../model/baseModel'
 
+foreignKeyAcceptedParameters = [
+  'foreignKey'
+  'referenceModel'
+  'referenceField'
+]
+
+foreignKeyValidationMethods =
+  foreignKey: 'validateForeignKey'
+
 
 class ForeignKey extends BaseField
 
@@ -16,15 +25,10 @@ class ForeignKey extends BaseField
   # extends BaseField parameters with it's own parameters
   # as well as validation methods
   constructor: (attributes...) ->
-    @foreignKeyParameters = [
-      'foreignKey'
-      'referenceModel'
-      'referenceField'
-      'required'
-    ]
-
-    @foreignKeyValidationMethods =
-      foreignKey: 'validateForeignKey'
+    # extend BaseField accepted parameters with ForeignKey accepted parameters
+    @constructor.acceptedParameters = _.union BaseField.acceptedParameters, foreignKeyAcceptedParameters
+    # extend BaseField validation methods with ForeignKey validation methods
+    @constructor.validationMethods = _.extend BaseField.validationMethods, foreignKeyValidationMethods
 
     referenceModel = attributes[0].referenceModel
 
@@ -33,32 +37,27 @@ class ForeignKey extends BaseField
 
     # if the 'referenceField' of FK is not set, then primaryKey of referencedModel
     # is taken as the 'referenceField'
-    if not _.has attributes[0], 'referenceField'
+    if not(_.has attributes[0], 'referenceField')
       _.extend attributes[0], { 'referenceField': referenceModel.metadata.primaryKey }
 
     # if the 'name' attribute of FK is not set, then camelCase name of referencedModel
     # is taken as the 'name' attribute e.g. AccountCategory -> accountCategory
-    if not _.has attributes[0], 'name'
+    if not(_.has attributes[0], 'name')
       _.extend attributes[0], { 'name': referenceModel.metadata.model.substring(0, 1).toLowerCase() + referenceModel.metadata.model.substring(1) }
 
     # here we retrieve the 'dbField' attribute
     # it translates 'name' attribute to snake_case and appends '_id' to the field 'name'
     # e.g. accountCategory -> account_category_id
-    if not _.has attributes[0], 'dbField'
-      _.extend attributes[0], @getDbField attributes[0].name
+    if not(_.has attributes[0], 'dbField')
+      _.extend attributes[0], { 'dbField': @getDbField(attributes[0].name) }
 
-    # define schema for the foreign key if it is not set
-    # default Joi validation schema is positive integer
-    # if it is required, we append the '.required()' function to the schema
-    # otherwise we append '.allow(null)' to the schema object
-    if not _.has attributes[0], 'schema'
+    # Joi validation schema for the foreign key is taken from related Model's reference field
+    referenceFieldSchema = referenceModel::attributes[attributes[0].referenceField].attributes.schema
+    if not(_.has attributes[0], 'schema')
       if _.has attributes[0], 'required'
-        _.extend attributes[0], { 'schema': Joi.number().integer().positive().required() }
+        _.extend attributes[0], { 'schema': referenceFieldSchema.required() }
       else
-        _.extend attributes[0], { 'schema': Joi.number().integer().positive().allow(null) }
-
-    @acceptedParameters = _.union @constructor.acceptedParameters, @foreignKeyParameters
-    @validationMethods = _.extend @constructor.validationMethods, @foreignKeyValidationMethods
+        _.extend attributes[0], { 'schema': referenceFieldSchema.allow(null) }
 
     super
 

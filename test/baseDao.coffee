@@ -65,7 +65,7 @@ describe 'BaseDAO tests', ->
         username: 'piobie'
         accountCategory: 1
 
-      User.objects().create({ payload: data, direct: true }).then (user) ->
+      User.objects().create({ data: data }).then (user) ->
         expect(user.id).to.equal 1
         expect(user.accountCategory).to.equal data.accountCategory
         expect(user.username).to.equal data.username
@@ -78,7 +78,7 @@ describe 'BaseDAO tests', ->
       data =
         name: 'can edit user'
 
-      Permission.objects().create({ payload: data, direct: true }).then (perm) ->
+      Permission.objects().create({ data: data }).then (perm) ->
         expect(perm.id).to.equal 1
         expect(perm.name).to.equal data.name
         done()
@@ -90,7 +90,7 @@ describe 'BaseDAO tests', ->
       data =
         name: 'director'
 
-      AccountCategory.objects().create({ payload: data, direct: true }).then (category) ->
+      AccountCategory.objects().create({ data: data }).then (category) ->
         expect(category).to.be.an.instanceOf AccountCategory
         category.id.should.equal 2
         category.name.should.equal data.name
@@ -129,7 +129,7 @@ describe 'BaseDAO tests', ->
         username: 'markas'
         accountCategory: 5
 
-      User.objects().create({ payload: data, direct: true }).then (user) ->
+      User.objects().create({ data: data }).then (user) ->
         done new Error 'Test passed, wrong!'
       .catch (error) ->
         error.should.have.property 'accountCategory'
@@ -158,7 +158,7 @@ describe 'BaseDAO tests', ->
       data =
         name: 'editor'
 
-      AccountCategory.objects().getById({ val: 1 }).then (category) ->
+      AccountCategory.objects().getById({ pk: 1 }).then (category) ->
         category.set data
         category.save().then (result) ->
           result.name.should.equal data.name
@@ -170,7 +170,7 @@ describe 'BaseDAO tests', ->
 
     it 'should return category by id with getById method', (done) ->
 
-      AccountCategory.objects().getById({ val: 1 }).then (category) ->
+      AccountCategory.objects().getById({ pk: 1 }).then (category) ->
         category.id.should.equal 1
         done()
       .catch (error) ->
@@ -229,7 +229,7 @@ describe 'BaseDAO tests', ->
 
     it 'should return users of first category', (done) ->
 
-      AccountCategory.objects().getById({ val: 1 }).then (category) ->
+      AccountCategory.objects().getById({ pk: 1 }).then (category) ->
         category.users.all().then (users) ->
           expect(users).to.be.an 'array'
           expect(users.length).to.equal 1
@@ -239,7 +239,7 @@ describe 'BaseDAO tests', ->
 
     it 'should return specified user of first category', (done) ->
 
-      AccountCategory.objects().getById({ val: 1 }).then (category) ->
+      AccountCategory.objects().getById({ pk: 1 }).then (category) ->
         category.users.get({ where: { id : 1 }}).then (user) ->
           expect(user.id).to.equal 1
           expect(user.username).to.equal 'piobie'
@@ -249,7 +249,7 @@ describe 'BaseDAO tests', ->
 
     it 'should set permissions of first category', (done) ->
 
-      AccountCategory.objects().getById({ val: 1 }).then (category) ->
+      AccountCategory.objects().getById({ pk: 1 }).then (category) ->
         category.permissions.set([1]).then (result) ->
           expect(result).to.be.an 'array'
           expect(_.isEqual(result, [1])).to.equal true
@@ -259,7 +259,7 @@ describe 'BaseDAO tests', ->
 
     it 'should return permissions of first category', (done) ->
 
-      AccountCategory.objects().getById({ val: 1 }).then (category) ->
+      AccountCategory.objects().getById({ pk: 1 }).then (category) ->
         category.permissions.all().then (permissions) ->
           expect(permissions).to.be.an 'array'
           expect(permissions[0].id).to.equal 1
@@ -269,7 +269,7 @@ describe 'BaseDAO tests', ->
 
     it 'should return specified permission of category', (done) ->
 
-      AccountCategory.objects().getById({ val: 1 }).then (category) ->
+      AccountCategory.objects().getById({ pk: 1 }).then (category) ->
         category.permissions.get({ id: 1 }).then (permission) ->
           expect(permission.id).to.equal 1
           expect(permission.name).to.equal 'can edit user'
