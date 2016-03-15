@@ -104,6 +104,13 @@ class BaseView
 
     @constructor._decoratorMethodBody @, method, arguments, 'payload', payload
 
+  @query: (query) -> (method) -> ->
+    query ?= {}
+    if query? and typeof query isnt 'object'
+      throw new Error "'query' parameters of routing object should be an object"
+
+    @constructor._decoratorMethodBody @, method, arguments, 'query', query
+
   @getAcceptableRouteOptions: ->
     acceptableRouteOptions
 
