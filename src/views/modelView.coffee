@@ -6,6 +6,8 @@ Boom        = require 'boom'
 
 BaseView    = require './baseView'
 
+moduleKeywords = ['extended', 'included']
+
 
 class ModelView extends BaseView
 
