@@ -5,6 +5,8 @@ Promise         = require 'bluebird'
 
 ForeignKey      = require './../fields/foreignKey'
 
+moduleKeywords = ['extended', 'included']
+
 
 class Serializer
 
