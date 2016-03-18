@@ -223,6 +223,7 @@ class BaseModel
         @[key] = value
       else
         throw new TypeError "The '#{key}' field does not match any attribute of model #{@constructor.metadata.model}!"
+    @
 
   # translate Object retrieved from database to JSON readable format
   # initially it would return all fields from Model, however it is able
