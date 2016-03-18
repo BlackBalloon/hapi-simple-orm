@@ -5,8 +5,18 @@ knex        = require('knex')(knexConf[process.env.NODE_ENV])
 _           = require 'underscore'
 Promise     = require 'bluebird'
 
+moduleKeywords = ['extended', 'included']
+
 
 class BaseDAO
+
+  @applyConfiguration: (obj) ->
+    @::['config'] = {}
+    for key, value of obj when key not in moduleKeywords
+      @::['config'][key] = value
+
+    obj.included?.apply(@)
+    this
 
   # constructor of BaseDAO, obtains two parameters
   # @param [Object] model current Model Class

@@ -73,6 +73,8 @@ class ModelSerializer extends Serializer
   # @param [String] key name of current field to serialize
   # @param [Object] serializer instance of serializer to be used on this field
   _getForeignKeyObject: (obj, key, serializer) ->
+    # if current field is not a serializer, or it's value is null
+    # then simply return instance[key] value
     if not (serializer instanceof Serializer) or obj[key] is null
       return new Promise (resolve, reject) ->
         resolve obj[key]
@@ -91,7 +93,7 @@ class ModelSerializer extends Serializer
     # we can also take into consideration the FieldRelatedSerializer
     returning = []
     if serializer instanceof FieldRelatedSerializer
-      # here we check if the field passd to FieldRelatedSerializer instance
+      # here we check if the field passed to FieldRelatedSerializer instance
       # belongs to any of the current Model instance attributes
       # if no - we throw an error with message
       if not model::attributes[serializer.field]?

@@ -9,6 +9,14 @@ BaseView    = require './baseView'
 
 class ModelView extends BaseView
 
+  @applyConfiguration: (obj) ->
+    @::['config'] = {}
+    for key, value of obj when key not in moduleKeywords
+      @::['config'][key] = value
+
+    obj.included?.apply(@)
+    this
+
   # every 'ModelView' instance must obtain two params
   # @param [Object] server current server's instance
   # @param [Object] options options of current routing module
