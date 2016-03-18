@@ -43,12 +43,12 @@ class ModelSerializer extends Serializer
     # here we check if data passed to the serializer is instance/instances
     # of Model defined in the 'config.model' attribute of the serializer
     # checking depends on the '@many' attribute passed to the serializer
-    if @data? and not @many and not (@data instanceof @constructor.config.model)
-      throw new Error "Data passed to the #{@constructor.name} must be an instance of #{@constructor.config.model.metadata.model}!"
+    if @data? and not @many and not (@data instanceof @config.model)
+      throw new Error "Data passed to the #{@constructor.name} must be an instance of #{@config.model.metadata.model}!"
     else if @data? and @many
       # here we check if every array element of '@data' is instance of specified Model
-      if (_.filter @data, (val) => val instanceof @constructor.config.model).length isnt @data.length
-        throw new Error "Data passed to the #{@constructor.name} must be an instance of #{@constructor.config.model.metadata.model}!"
+      if (_.filter @data, (val) => val instanceof @config.model).length isnt @data.length
+        throw new Error "Data passed to the #{@constructor.name} must be an instance of #{@config.model.metadata.model}!"
 
     # we set the 'many' parameter to false if it wasnt passed to the constructor
     @many ?= false
@@ -57,8 +57,8 @@ class ModelSerializer extends Serializer
     # if the instance was passed to the constructor, we need to check
     # if it is an instance of serializer's specified model
     if @instance?
-      if not (@instance instanceof @constructor.config.model)
-        throw new TypeError "Instance passed to the #{@constructor.name} is not an instance of #{@constructor.config.model.name}"
+      if not (@instance instanceof @config.model)
+        throw new TypeError "Instance passed to the #{@constructor.name} is not an instance of #{@config.model.name}"
 
 
   # simple method which returns value for specified field of given object
@@ -240,7 +240,7 @@ class ModelSerializer extends Serializer
       # here we check if serializer's config field belongs to Model's attributes
       # as well as we check if current field is not set as excluded
       # according to 'constructor.config.excludeFields' parameter
-      if not (key in @constructor.config.excludeFields) and key of obj.attributes
+      if not (key in @config.excludeFields) and key of obj.attributes
         # taking the method name to be used on current field basing on the field's constructor
         # different methods are used for instances of BaseField
         # and for related objects (foreign keys, m2m or m2o)
@@ -281,32 +281,32 @@ class ModelSerializer extends Serializer
       _.each @data, (val, key) =>
         if not (key in @serializerFieldsKeys)
           reject new TypeError "Parameter '#{key}' is not an attribute of " +
-                                "#{@constructor.config.model.metadata.model} or is set as readOnly!"
+                                "#{@config.model.metadata.model} or is set as readOnly!"
 
-      if @constructor.config.model.metadata.primaryKey of @data and not @instance
+      if @config.model.metadata.primaryKey of @data and not @instance
         reject new TypeError "Primary key was passed without an instance of the model!"
       resolve true
 
   # create new instance of the model and save it to the database
   create: ->
-    @constructor.config.model.objects().create({ data: @data, toObject: true }).then (result) ->
+    @config.model.objects().create({ data: @data, toObject: true }).then (result) ->
       return result
     .catch (error) =>
-      if @constructor.config.model.metadata.errorLogger?
-        @constructor.config.model.metadata.errorLogger.error error
+      if @config.model.metadata.errorLogger?
+        @config.model.metadata.errorLogger.error error
       throw error
 
   # update specified instance with data passed to the serializer
   update: ->
     if not @instance?
-      throw new Error "There is no instance of #{@constructor.config.model.metadata.model}!"
+      throw new Error "There is no instance of #{@config.model.metadata.model}!"
 
     @instance.set @data
     @instance.save({ toObject: true }).then (result) ->
       return result
     .catch (error) =>
-      if @constructor.config.model.metadata.errorLogger?
-        @constructor.config.model.metadata.errorLogger.error error
+      if @config.model.metadata.errorLogger?
+        @config.model.metadata.errorLogger.error error
       throw error
 
   # save the data to database - if the instance was passed we use the
@@ -322,8 +322,8 @@ class ModelSerializer extends Serializer
           @data = result
           return result
     .catch (error) =>
-      if @constructor.config.model.metadata.errorLogger?
-        @constructor.config.model.metadata.errorLogger.error error
+      if @config.model.metadata.errorLogger?
+        @config.model.metadata.errorLogger.error error
       throw error
 
   getData: =>

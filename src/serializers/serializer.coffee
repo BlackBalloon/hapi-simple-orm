@@ -8,6 +8,14 @@ ForeignKey      = require './../fields/foreignKey'
 
 class Serializer
 
+  @applyConfiguration: (obj) ->
+    @::['config'] = {}
+    for key, value of obj when key not in moduleKeywords
+      @::['config'][key] = value
+
+    obj.included?.apply(@)
+    this
+
   constructor: (@attributes...) ->
     # check if all attributes passed to the constructor are accepted by this serializer
     _.each @attributes[0], (val, key) =>
