@@ -65,6 +65,9 @@ class BaseField
     if @attributes.primaryKey and not(_.has @attributes, 'name')
       @attributes['name'] = 'id'
 
+    if @attributes.primaryKey and not (@attributes.schema)?
+      @attributes['schema'] = Joi.number().integer().positive()
+
     # if specify the 'dbField' attribute for current field basing on
     # it's 'name' attribute value - name is translated from camelCase to snake_case
     if not (@constructor.name is 'ForeignKey') and _.has(@attributes, 'name')
