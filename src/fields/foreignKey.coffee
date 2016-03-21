@@ -54,10 +54,7 @@ class ForeignKey extends BaseField
     # Joi validation schema for the foreign key is taken from related Model's reference field
     referenceFieldSchema = referenceModel::attributes[attributes[0].referenceField].attributes.schema
     if not(_.has attributes[0], 'schema')
-      if _.has attributes[0], 'required'
-        _.extend attributes[0], { 'schema': referenceFieldSchema.required() }
-      else
-        _.extend attributes[0], { 'schema': referenceFieldSchema.allow(null) }
+      _.extend attributes[0], { schema: referenceFieldSchema }
 
     super
 
