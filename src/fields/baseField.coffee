@@ -65,8 +65,13 @@ class BaseField
     if @attributes.primaryKey and not(_.has @attributes, 'name')
       @attributes['name'] = 'id'
 
+    # default schema for primary key if the schema was not set in attributes
     if @attributes.primaryKey and not (@attributes.schema)?
       @attributes['schema'] = Joi.number().integer().positive()
+
+    # default 'required' value set to false if doesn't exist
+    if not (_.has @attributes, 'required')
+      @attributes['required'] = false
 
     # if specify the 'dbField' attribute for current field basing on
     # it's 'name' attribute value - name is translated from camelCase to snake_case

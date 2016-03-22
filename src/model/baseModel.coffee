@@ -28,6 +28,13 @@ acceptableMetadataAttributes = [
 
 class BaseModel
 
+  @injectDao: (obj) ->
+    @objects = ->
+      return obj
+
+    obj.extended?.apply(@)
+    this
+
   @extend: (obj) ->
     # add 'metadata' attribute to the model and apply parameters to it
     @metadata = {}
@@ -56,14 +63,6 @@ class BaseModel
     # if 'timestamps' attribute was not passed, we set its default val to true
     if not @metadata.timestamps?
       @metadata.timestamps = true
-
-    # if no dao was passed in the metadata object, we set default value to BaseDAO
-    if not @metadata.dao?
-      @metadata.dao = BaseDAO
-
-    # make method '.objects()' of Model Class an instance of DAO
-    @objects = ->
-      return new @metadata.dao @
 
     obj.extended?.apply(@)
     this
@@ -220,7 +219,16 @@ class BaseModel
   set: (properties) =>
     _.each properties, (value, key) =>
       if key of @attributes
-        @[key] = value
+        if @attributes[key] instanceof ForeignKey
+          if value instanceof BaseModel
+            if value instanceof @attributes[key].attributes.referenceModel
+              @[key] = value.get(@attributes[key].attributes.referenceModel.metadata.primaryKey)
+            else
+              throw new TypeError "Value for '#{key}' of #{@constructor.metadata.model} should be FK value or instance of #{@attributes[key].attributes.referenceModel.metadata.model}!"
+          else
+            @[key] = value
+        else
+          @[key] = value
       else
         throw new TypeError "The '#{key}' field does not match any attribute of model #{@constructor.metadata.model}!"
     @
