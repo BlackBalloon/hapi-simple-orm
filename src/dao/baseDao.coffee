@@ -11,11 +11,41 @@ moduleKeywords = ['extended', 'included']
 class BaseDAO
 
   @applyConfiguration: (obj) ->
-    @::['config'] = {}
+    @config = {}
     for key, value of obj when key not in moduleKeywords
-      @::['config'][key] = value
+      @config[key] = value
 
-    obj.included?.apply(@)
+    @config ?= {}
+
+    if not @config.lookupField?
+      @config.lookupField = @config.model.metadata.primaryKey
+
+    if not @config.returning?
+      @config.returning = {}
+      @config.returning.basic = ['*']
+
+    # check if '@config.returning.basic' array contains '*'
+    # if it does, it means that each query using this returning
+    # should return all attributes of given model
+    if _.contains @config.returning.basic, '*'
+      returningArray = _.map @config.model::attributes, (val, key) =>
+        if not (key of @config.model::timestampAttributes) and not val.attributes.abstract?
+          "#{key}"
+      @config.returning.basic = _.without returningArray, undefined
+
+    # iterate over every array from config.returning and translate camelCase field
+    # to database snake_case equivalent for current model
+    newReturning = {}
+    _.each @config.returning, (returningArray, key) =>
+      newReturningArray = _.map returningArray, (fieldName) =>
+        "#{@config.model::attributes[fieldName].getDbField(fieldName)} AS #{fieldName}"
+      newReturning[key] = newReturningArray
+
+    @config.returning = newReturning
+
+    @config.model.injectDao @
+
+    obj.extended?.apply(@)
     this
 
   # constructor of BaseDAO, obtains two parameters
@@ -43,14 +73,28 @@ class BaseDAO
     if _.contains @config.returning.basic, '*'
       returningArray = _.map @config.model::attributes, (val, key) =>
         if not (key of @config.model::timestampAttributes) and not val.attributes.abstract?
-          "#{val.getDbField(key)} AS #{key}"
+          "#{key}"
       @config.returning.basic = _.without returningArray, undefined
+
+    # iterate over every array from config.returning and translate camelCase field
+    # to database snake_case equivalent for current model
+    newReturning = {}
+    _.each @config.returning, (returningArray, key) =>
+      newReturningArray = _.map returningArray, (fieldName) =>
+        if not ([" AS "].some (word) -> ~fieldName.indexOf word)
+          "#{@config.model::attributes[fieldName].getDbField(fieldName)} AS #{fieldName}"
+        else
+          "#{fieldName}"
+      newReturning[key] = newReturningArray
+
+    @config.returning = newReturning
+
 
   # return specified instance of given Model by it's 'primaryKey' attribute
   # @param [Any] val value of the primary key
   # @param [Array] returning array of fields to be returned from the DB
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
-  getById: ({ pk, returning, toObject } = {}) ->
+  @getById: ({ pk, returning, toObject } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
@@ -83,7 +127,7 @@ class BaseDAO
   # @param [Object] lookup object which is used in 'where' sql query like: { id: 5 }
   # @param [Array] returning array of fields to be returned from the DB e.g. ['id', 'name']
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
-  get: ({ lookup, returning, toObject } = {}) ->
+  @get: ({ lookup, returning, toObject } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
@@ -115,7 +159,7 @@ class BaseDAO
   # return all instances of given Model
   # @param [Array] returning array of fields to be returned from the DB e.g. ['id', 'name']
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
-  all: ({ returning, toObject, orderBy } = {}) ->
+  @all: ({ returning, toObject, orderBy } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
@@ -168,7 +212,7 @@ class BaseDAO
   # @param [Array] lookup array of objects with keys: 'key', 'values'. Defines the filtering attributes like 'where', 'orWhere', 'whereIn' etc.
   # @param [Array] returning array of fields to be returned from the DB e.g. ['id', 'name']
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
-  filter: ({ lookup, returning, toObject, orderBy } = {}) ->
+  @filter: ({ lookup, returning, toObject, orderBy } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
@@ -248,7 +292,7 @@ class BaseDAO
   # @param [Array] returning array of fields to be returned from DB
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
   # @param [Boolean] direct boolean defining if this method is used directly on Model class
-  create: ({ data, returning, toObject, direct } = {}) ->
+  @create: ({ data, returning, toObject, direct } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
@@ -292,7 +336,7 @@ class BaseDAO
   # @param [Array] data array of objects to be inserted to the database
   # @param [Array] returning array of fields to be returned from the database after create
   # @param [Boolean] toObject boolean specifying if returned objects should be model instances
-  bulkCreate: ({ data, returning, toObject } = {}) ->
+  @bulkCreate: ({ data, returning, toObject } = {}) ->
     # ensure that the 'data' parameter was passed and it is array
     if not data? or not (data instanceof Array)
       throw new Error "'data' argument must be passed to the function and it must be an array!"
@@ -360,7 +404,7 @@ class BaseDAO
   # @param [Object] obj current Model's instance
   # @param [Array] returning array of fields to be returned from DB
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
-  update: ({ obj, returning, toObject } = {}) ->
+  @update: ({ obj, returning, toObject } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
@@ -392,7 +436,7 @@ class BaseDAO
 
   # delete given instance of the model
   # @param [Any] lookupValue value for the 'lookupField' of the given model which is used in 'where' sql statement
-  delete: (lookupValue, whoDeleted) ->
+  @delete: (lookupValue, whoDeleted) ->
     deleteData =
       is_deleted: true
 
