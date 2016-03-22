@@ -7,7 +7,6 @@ BaseField     = require './../../lib/fields/baseField'
 ManyToOne     = require './../../lib/fields/manyToOne'
 ManyToMany    = require './../../lib/fields/manyToMany'
 
-AccountCategoryDAO = require './accountCategoryDao'
 
 accountCategoryAttributes =
   id: new BaseField(
@@ -36,7 +35,6 @@ accountCategoryAttributes =
 
 metadata =
   tableName: 'account_categories'
-  dao: AccountCategoryDAO
 
 
 class AccountCategory extends BaseModel

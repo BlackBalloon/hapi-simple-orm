@@ -6,7 +6,6 @@ BaseModel   = require './../../lib/model/baseModel'
 BaseField   = require './../../lib/fields/baseField'
 ForeignKey  = require './../../lib/fields/foreignKey'
 
-UserDAO     = require './userDao'
 
 AccountCategory = require './accountCategoryModel'
 
@@ -28,15 +27,12 @@ userAttributes =
     referenceModel: AccountCategory
   )
 
-metadata =
-  dao: UserDAO
-
 
 class User extends BaseModel
 
   @include userAttributes
 
-  @extend metadata
+  @extend {}
 
 
 module.exports = User

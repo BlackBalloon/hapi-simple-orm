@@ -1,14 +1,17 @@
 'use strict'
 
 BaseDAO = require './../../lib/dao/baseDao'
+AccountCategory = require './accountCategoryModel'
+
+config =
+  model: AccountCategory
+  returning:
+    basic: ['id', 'name']
 
 
 class AccountCategoryDAO extends BaseDAO
 
-  config:
-    lookupField: 'id'
-    returning:
-      basic: ['id', 'name']
+  @applyConfiguration config
 
 
 module.exports = AccountCategoryDAO

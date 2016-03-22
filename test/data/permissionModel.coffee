@@ -6,7 +6,6 @@ BaseModel     = require './../../lib/model/baseModel'
 BaseField     = require './../../lib/fields/baseField'
 ManyToMany    = require './../../lib/fields/manyToMany'
 
-PermissionDAO = require './permissionDao'
 
 permissionAttributes =
   id: new BaseField(
@@ -28,8 +27,7 @@ permissionAttributes =
     returning: ['id', 'name']
   )
 
-metadata =
-  dao: PermissionDAO
+metadata = {}
 
 
 class Permission extends BaseModel

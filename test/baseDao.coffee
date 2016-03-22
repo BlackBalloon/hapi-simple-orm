@@ -29,6 +29,7 @@ describe 'BaseDAO tests', ->
       done error
 
   describe 'creating new instances', ->
+
     it 'should create new account category', (done) ->
 
       data =
@@ -55,6 +56,14 @@ describe 'BaseDAO tests', ->
 
         result.id.should.equal 1
         result.name.should.equal data.name
+
+        userData =
+          username: 'set test'
+          accountCategory: result
+
+        user = new User userData
+        console.log user
+
         done()
       .catch (error) ->
         done error
