@@ -11,6 +11,8 @@ moduleKeywords = ['extended', 'included']
 class BaseDAO
 
   @extendWithModel: (model) ->
+    @config ?= {}
+
     @config.model = model
 
     if not @config.lookupField?
