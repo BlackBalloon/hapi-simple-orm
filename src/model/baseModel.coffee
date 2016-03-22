@@ -64,6 +64,11 @@ class BaseModel
     if not @metadata.timestamps?
       @metadata.timestamps = true
 
+    if not @metadata.dao?
+      @metadata.dao = BaseDAO
+
+    @metadata.dao.extendWithModel @
+
     obj.extended?.apply(@)
     this
 

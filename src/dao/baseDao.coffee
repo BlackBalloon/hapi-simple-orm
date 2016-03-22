@@ -10,12 +10,8 @@ moduleKeywords = ['extended', 'included']
 
 class BaseDAO
 
-  @applyConfiguration: (obj) ->
-    @config = {}
-    for key, value of obj when key not in moduleKeywords
-      @config[key] = value
-
-    @config ?= {}
+  @extendWithModel: (model) ->
+    @config.model = model
 
     if not @config.lookupField?
       @config.lookupField = @config.model.metadata.primaryKey
@@ -44,6 +40,16 @@ class BaseDAO
     @config.returning = newReturning
 
     @config.model.injectDao @
+
+    model.extended?.apply(@)
+    this
+
+  @applyConfiguration: (obj) ->
+    @config = {}
+    for key, value of obj when key not in moduleKeywords
+      @config[key] = value
+
+    @config ?= {}
 
     obj.extended?.apply(@)
     this

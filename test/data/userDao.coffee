@@ -1,10 +1,8 @@
 'use strict'
 
 BaseDAO = require './../../lib/dao/baseDao'
-User = require './userModel'
 
 config = {
-  model: User
   returning:
     basic: [
       'id',
