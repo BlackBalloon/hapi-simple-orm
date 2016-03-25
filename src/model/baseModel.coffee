@@ -64,10 +64,13 @@ class BaseModel
     if not @metadata.timestamps?
       @metadata.timestamps = true
 
+    # default 'dao' is set to BaseDAO if not passed
     if not @metadata.dao?
       @metadata.dao = BaseDAO
 
-    @metadata.dao.extendWithModel @
+    dao = @metadata.dao
+    @objects = =>
+      return new @metadata.dao @
 
     obj.extended?.apply(@)
     this

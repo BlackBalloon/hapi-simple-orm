@@ -47,22 +47,19 @@ class BaseDAO
     this
 
   @applyConfiguration: (obj) ->
-    @config = {}
+    @::config = {}
     for key, value of obj when key not in moduleKeywords
-      @config[key] = value
+      @::config[key] = value
 
-    @config ?= {}
-
-    obj.extended?.apply(@)
+    obj.included?.apply(@)
     this
 
   # constructor of BaseDAO, obtains two parameters
   # @param [Object] model current Model Class
   # @param [Object] errorLogger log4j logger object for logging errors
-  constructor: (model, errorLogger) ->
+  constructor: (model) ->
     @config ?= {}
     @config.model = model
-    @config.errorLogger = errorLogger
 
     # set default lookupField to 'primaryKey' of current model
     # if none was specified
@@ -102,7 +99,7 @@ class BaseDAO
   # @param [Any] val value of the primary key
   # @param [Array] returning array of fields to be returned from the DB
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
-  @getById: ({ pk, returning, toObject } = {}) ->
+  getById: ({ pk, returning, toObject } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
@@ -135,7 +132,7 @@ class BaseDAO
   # @param [Object] lookup object which is used in 'where' sql query like: { id: 5 }
   # @param [Array] returning array of fields to be returned from the DB e.g. ['id', 'name']
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
-  @get: ({ lookup, returning, toObject } = {}) ->
+  get: ({ lookup, returning, toObject } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
@@ -174,7 +171,7 @@ class BaseDAO
   # return all instances of given Model
   # @param [Array] returning array of fields to be returned from the DB e.g. ['id', 'name']
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
-  @all: ({ returning, toObject, orderBy } = {}) ->
+  all: ({ returning, toObject, orderBy } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
@@ -227,7 +224,7 @@ class BaseDAO
   # @param [Array] lookup array of objects with keys: 'key', 'values'. Defines the filtering attributes like 'where', 'orWhere', 'whereIn' etc.
   # @param [Array] returning array of fields to be returned from the DB e.g. ['id', 'name']
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
-  @filter: ({ lookup, returning, toObject, orderBy } = {}) ->
+  filter: ({ lookup, returning, toObject, orderBy } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
@@ -310,7 +307,7 @@ class BaseDAO
   # @param [Array] returning array of fields to be returned from DB
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
   # @param [Boolean] direct boolean defining if this method is used directly on Model class
-  @create: ({ data, returning, toObject, direct } = {}) ->
+  create: ({ data, returning, toObject, direct } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
@@ -354,7 +351,7 @@ class BaseDAO
   # @param [Array] data array of objects to be inserted to the database
   # @param [Array] returning array of fields to be returned from the database after create
   # @param [Boolean] toObject boolean specifying if returned objects should be model instances
-  @bulkCreate: ({ data, returning, toObject } = {}) ->
+  bulkCreate: ({ data, returning, toObject } = {}) ->
     # ensure that the 'data' parameter was passed and it is array
     if not data? or not (data instanceof Array)
       throw new Error "'data' argument must be passed to the function and it must be an array!"
@@ -422,7 +419,7 @@ class BaseDAO
   # @param [Object] obj current Model's instance
   # @param [Array] returning array of fields to be returned from DB
   # @param [Boolean] toObject boolean defining if result should be translated to Model instance
-  @update: ({ obj, returning, toObject } = {}) ->
+  update: ({ obj, returning, toObject } = {}) ->
     # we set default value for 'toObject' parameter as true
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
@@ -454,7 +451,7 @@ class BaseDAO
 
   # delete given instance of the model
   # @param [Any] lookupValue value for the 'lookupField' of the given model which is used in 'where' sql statement
-  @delete: (lookupValue, whoDeleted) ->
+  delete: (lookupValue, whoDeleted) ->
     deleteData =
       is_deleted: true
 

@@ -224,6 +224,19 @@ describe 'BaseDAO tests', ->
       .catch (error) ->
         done error
 
+    it 'should filter categories by name %cat%', (done) ->
+
+      AccountCategory.objects().filter({
+        lookup: [
+          key: 'where',
+          values: ['name', 'like', '%cat%']
+        ], toObject: false, returning: ['name']
+      }).then (categories) ->
+        console.log categories
+        done()
+      .catch (error) ->
+        done error
+
   describe 'deleting instances', ->
 
     it 'should delete category with id = 3', (done) ->
