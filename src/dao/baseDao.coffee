@@ -143,10 +143,17 @@ class BaseDAO
     if not lookup?
       throw new Error "'get()' method requires value for 'lookup' parameter!"
 
+    where = {}
+    _.each lookup, (val, key) =>
+      if not (key of @config.model::attributes)
+        throw new Error "'#{key}' does not match any attribute of model '#{@config.model.metadata.model}' in '.get()' method of DAO"
+      databaseKey = @config.model::attributes[key].getDbField(key)
+      where[databaseKey] = val
+
     returning ?= @config.returning.basic
 
     knex(@config.model.metadata.tableName)
-      .where(lookup)
+      .where(where)
       .andWhere('is_deleted', false)
       .select(returning)
       .then (rows) =>
@@ -261,20 +268,23 @@ class BaseDAO
     # which means that the lookup would be '#{value of key} name = sample name'
     # so for example, if the object was: { key: 'where', values: ['name', '=', 'sample name'] }
     # corresponding query would look like: where "name" = "sample name"
+    model = @config.model
     _.each lookup, (val) ->
       if typeof val.values[0] is 'object' and not (_.isEmpty val.values[0])
         query[val.key]( ->
           _.each val.values, (nestedVal) =>
+            databaseKey = model::attributes[nestedVal.values[0]].getDbField(nestedVal.values[0])
             if nestedVal.values.length is 2
-              @[nestedVal.key](nestedVal.values[0], nestedVal.values[1])
+              @[nestedVal.key](databaseKey, nestedVal.values[1])
             else
-              @[nestedVal.key](nestedVal.values[0], nestedVal.values[1], nestedVal.values[2])
+              @[nestedVal.key](databaseKey, nestedVal.values[1], nestedVal.values[2])
         )
       else if val.values instanceof Array
+        databaseKey = model::attributes[val.values[0]].getDbField(val.values[0])
         if val.values.length is 2
-          query[val.key](val.values[0], val.values[1])
+          query[val.key](databaseKey, val.values[1])
         else if val.values.length is 3
-          query[val.key](val.values[0], val.values[1], val.values[2])
+          query[val.key](databaseKey, val.values[1], val.values[2])
 
     query.andWhere('is_deleted', false)
 
