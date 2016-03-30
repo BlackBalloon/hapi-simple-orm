@@ -106,6 +106,8 @@ class ModelView extends BaseView
         validate:
           params:
             "#{@config.model.metadata.primaryKey}": @config.model::attributes[@config.model.metadata.primaryKey].attributes.schema.required()
+          query:
+            fields: Joi.array().items(Joi.string()).single()
 
         plugins:
           'hapi-swagger':
@@ -121,7 +123,17 @@ class ModelView extends BaseView
                 'description': 'Not found'
 
         handler: (request, reply) =>
-          @config.model.objects().getById({ pk: request.params.id }).then (result) =>
+          returning = undefined
+          if request.query.fields?
+            try
+              returning = _.map request.query.fields, (field) =>
+                if field not of @config.model::attributes
+                  throw new Error "Field '#{field}' does not match any attribute of model #{@config.model.metadata.model}"
+                "#{@config.model::attributes[field].getDbField(field)} AS #{field}"
+            catch error
+              return reply Boom.badRequest(error)
+
+          @config.model.objects().getById({ pk: request.params.id, returning: returning }).then (result) =>
             if result?
               if ifSerialize
                 serializerClass = if serializer then serializer else @config.serializer
@@ -162,6 +174,10 @@ class ModelView extends BaseView
         tags: @config.tags
         id: "returnAll#{@config.pluralName}"
 
+        validate:
+          query:
+            fields: Joi.array().items(Joi.string()).single()
+
         plugins:
           'hapi-swagger':
             responses:
@@ -174,7 +190,17 @@ class ModelView extends BaseView
                 'description': 'Unauthorized'
 
         handler: (request, reply) =>
-          @config.model.objects().all().then (objects) =>
+          returning = undefined
+          if request.query.fields?
+            try
+              returning = _.map request.query.fields, (field) =>
+                if field not of @config.model::attributes
+                  throw new Error "Field '#{field}' does not match any attribute of model #{@config.model.metadata.model}"
+                "#{@config.model::attributes[field].getDbField(field)} AS #{field}"
+            catch error
+              return reply Boom.badRequest(error)
+
+          @config.model.objects().all({ returning: returning }).then (objects) =>
             if ifSerialize
               serializerClass = if serializer then serializer else @config.serializer
               if not serializerClass?

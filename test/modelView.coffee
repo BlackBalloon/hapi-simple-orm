@@ -7,6 +7,9 @@ _           = require 'underscore'
 Joi         = require 'joi'
 chai        = require 'chai'
 
+knexConf    = require '../knexfile'
+knex        = require('knex')(knexConf['test'])
+
 chai.should()
 expect      = chai.expect
 
@@ -61,6 +64,17 @@ class UserModelView extends ModelView
 userModelView = null
 
 describe 'ModelView tests', ->
+
+  before (done) ->
+    knex.migrate.rollback().then ->
+      knex.migrate.latest().then ->
+        userData =
+          username: 'piobie'
+
+        User.objects().create({ data: userData }).then (user) ->
+          done()
+    .catch (error) ->
+      done error
 
   it 'create ModelView for User model with default options', (done) ->
     defaultOptions =
@@ -146,7 +160,36 @@ describe 'ModelView tests', ->
       .end (error, response) ->
         if error
           return done error
-          
+
         console.log response.body
 
+        done()
+
+  it 'should test query fields param on .all()', (done) ->
+
+    request('http://localhost:3000')
+      .get('/users?fields=id&fields=username')
+      .expect(200)
+      .end (error, response) ->
+        expect(response.body).to.be.an 'array'
+        expect(response.body[0]).to.have.all.keys ['id', 'username']
+        done()
+
+  it 'should test query fields param on .get()', (done) ->
+
+    request('http://localhost:3000')
+      .get('/users/1?fields=id&fields=username')
+      .expect(200)
+      .end (error, response) ->
+        expect(response.body).to.have.all.keys ['id', 'username']
+        done()
+
+  it 'should return 400 on query fields param (does not match)', (done) ->
+
+    request('http://localhost:3000')
+      .get('/users/1?fields=id&fields=test')
+      .expect(400)
+      .end (error, response) ->
+        expect(response.body.statusCode).to.equal 400;
+        expect(response.body).to.have.property 'message';
         done()

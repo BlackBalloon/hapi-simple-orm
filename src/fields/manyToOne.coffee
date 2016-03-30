@@ -42,7 +42,8 @@ class ManyToOne
       @toModel = require field.attributes.toModel
       @referenceField = field.attributes.referenceField
       @returning = _.map field.attributes.returning, (val) =>
-        "#{@toModel::attributes[val].getDbField(val)} AS #{val}"
+        if val of @toModel::attributes
+          "#{@toModel::attributes[val].getDbField(val)} AS #{val}"
 
     # return all objects related to this instance
     # e.g. return all users of specified account category with '.users.all()'
