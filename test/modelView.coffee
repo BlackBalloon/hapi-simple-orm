@@ -27,6 +27,7 @@ class UserModelView extends ModelView
   config:
     model: User
     tags: ['auth', 'api']
+    allowTimestampAttributes: true
 
   getAccountCategory:
     @method('GET') \
@@ -168,11 +169,11 @@ describe 'ModelView tests', ->
   it 'should test query fields param on .all()', (done) ->
 
     request('http://localhost:3000')
-      .get('/users?fields=id&fields=username')
+      .get('/users?fields=id&fields=username&fields=isDeleted')
       .expect(200)
       .end (error, response) ->
         expect(response.body).to.be.an 'array'
-        expect(response.body[0]).to.have.all.keys ['id', 'username']
+        expect(response.body[0]).to.have.all.keys ['id', 'username', 'isDeleted']
         done()
 
   it 'should test query fields param on .get()', (done) ->

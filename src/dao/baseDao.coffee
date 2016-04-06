@@ -10,42 +10,6 @@ moduleKeywords = ['extended', 'included']
 
 class BaseDAO
 
-  @extendWithModel: (model) ->
-    @config ?= {}
-
-    @config.model = model
-
-    if not @config.lookupField?
-      @config.lookupField = @config.model.metadata.primaryKey
-
-    if not @config.returning?
-      @config.returning = {}
-      @config.returning.basic = ['*']
-
-    # check if '@config.returning.basic' array contains '*'
-    # if it does, it means that each query using this returning
-    # should return all attributes of given model
-    if _.contains @config.returning.basic, '*'
-      returningArray = _.map @config.model::attributes, (val, key) =>
-        if not (key of @config.model::timestampAttributes) and not val.attributes.abstract?
-          "#{key}"
-      @config.returning.basic = _.without returningArray, undefined
-
-    # iterate over every array from config.returning and translate camelCase field
-    # to database snake_case equivalent for current model
-    newReturning = {}
-    _.each @config.returning, (returningArray, key) =>
-      newReturningArray = _.map returningArray, (fieldName) =>
-        "#{@config.model::attributes[fieldName].getDbField(fieldName)} AS #{fieldName}"
-      newReturning[key] = newReturningArray
-
-    @config.returning = newReturning
-
-    @config.model.injectDao @
-
-    model.extended?.apply(@)
-    this
-
   @applyConfiguration: (obj) ->
     @::config = {}
     for key, value of obj when key not in moduleKeywords
@@ -87,6 +51,8 @@ class BaseDAO
     _.each @config.returning, (returningArray, key) =>
       newReturningArray = _.map returningArray, (fieldName) =>
         if not ([" AS "].some (word) -> ~fieldName.indexOf word)
+          if fieldName not of @config.model::attributes
+            throw new Error "Field '#{fieldName}' from 'config.returning' of #{@config.model.metadata.model} is not an attribute of this model"
           "#{@config.model::attributes[fieldName].getDbField(fieldName)} AS #{fieldName}"
         else
           "#{fieldName}"

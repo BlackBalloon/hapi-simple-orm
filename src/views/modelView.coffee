@@ -129,6 +129,10 @@ class ModelView extends BaseView
               returning = _.map request.query.fields, (field) =>
                 if field not of @config.model::attributes
                   throw new Error "Field '#{field}' does not match any attribute of model #{@config.model.metadata.model}"
+
+                if not @config.allowTimestampAttributes? and field of @config.model::timestampAttributes
+                  throw new Error "Field '#{field}' does not match any attribute of model #{@config.model.metadata.model}"
+
                 "#{@config.model::attributes[field].getDbField(field)} AS #{field}"
             catch error
               return reply Boom.badRequest(error)
@@ -196,6 +200,10 @@ class ModelView extends BaseView
               returning = _.map request.query.fields, (field) =>
                 if field not of @config.model::attributes
                   throw new Error "Field '#{field}' does not match any attribute of model #{@config.model.metadata.model}"
+
+                if not @config.allowTimestampAttributes and field of @config.model::timestampAttributes
+                  throw new Error "Field '#{field}' does not match any attribute of model #{@config.model.metadata.model}"
+
                 "#{@config.model::attributes[field].getDbField(field)} AS #{field}"
             catch error
               return reply Boom.badRequest(error)
