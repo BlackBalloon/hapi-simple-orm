@@ -172,6 +172,7 @@ describe 'ModelView tests', ->
       .get('/users?fields=id&fields=username&fields=isDeleted')
       .expect(200)
       .end (error, response) ->
+        console.log response.body
         expect(response.body).to.be.an 'array'
         expect(response.body[0]).to.have.all.keys ['id', 'username', 'isDeleted']
         done()
