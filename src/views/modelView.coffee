@@ -414,6 +414,12 @@ class ModelView extends BaseView
 
           @config.model.objects().delete(request.params.id, whoDeleted).then (result) =>
             if result is 1
+              if @config.deleteLogger?
+                if request.auth.credentials? and request.auth.credentials.user?
+                  @config.deleteLogger.info "#{@config.model.metadata.model} with id #{request.params.id} deleted by #{request.auth.credentials.user.username}."
+                else
+                  @config.deleteLogger.info "#{@config.model.metadata.model} with id #{request.params.id} deleted by anonymous."
+                  
               publishObj =
                 action: 'delete'
                 id: request.params.id
