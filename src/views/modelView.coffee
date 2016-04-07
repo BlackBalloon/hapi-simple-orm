@@ -276,9 +276,9 @@ class ModelView extends BaseView
               }
 
               if request.auth.credentials? and request.auth.credentials.user?
-                deleteData['whoCreated'] = request.auth.credentials.user.username
+                insertData['whoCreated'] = request.auth.credentials.user.username
               else
-                deleteData['whoCreated'] = 'anonymous'
+                insertData['whoCreated'] = 'anonymous'
 
               currentModelCollection = @config.mongoConf.mongoInstance.db().collection(@config.model.metadata.collectionName)
               currentModelCollection.insert insertData, (error, value) ->
