@@ -265,11 +265,25 @@ class ModelView extends BaseView
             _.extend request.payload, { whoCreated: request.auth.credentials.user.id }
 
           @config.model.objects().create({ data: request.payload }).then (result) =>
-            if @config.createLogger?
+            if @config.mongoConf? and @config.mongoConf.mongoInstance?
+
+              insertData = {
+                model: @config.model.metadata.model
+                module: @config.mongoConf.module || 'undefined'
+                action: 'create'
+                data: request.payload
+                createDate: new Date()
+              }
+
               if request.auth.credentials? and request.auth.credentials.user?
-                @config.createLogger.info "#{@config.model.metadata.model} #{JSON.stringify(result)} created by #{request.auth.credentials.user.username}."
+                deleteData['whoCreated'] = request.auth.credentials.user.username
               else
-                @config.createLogger.info "#{@config.model.metadata.model} #{JSON.stringify(result)} created by anonymous."
+                deleteData['whoCreated'] = 'anonymous'
+
+              currentModelCollection = @config.mongoConf.mongoInstance.db().collection(@config.model.metadata.collectionName)
+              currentModelCollection.insert insertData, (error, value) ->
+                if (error)
+                  return reply Boom.badRequest error
 
             if ifSerialize
               serializerClass = if serializer then serializer else @config.serializer
@@ -414,12 +428,29 @@ class ModelView extends BaseView
 
           @config.model.objects().delete(request.params.id, whoDeleted).then (result) =>
             if result is 1
-              if @config.deleteLogger?
+              if @config.mongoConf? and @config.mongoConf.mongoInstance?
+
+                deleteDataSpecifics = {}
+                deleteDataSpecifics[@config.model.metadata.primaryKey] = request.params.id
+
+                deleteData = {
+                  model: @config.model.metadata.model
+                  module: @config.mongoConf.module || 'undefined'
+                  action: 'delete'
+                  data: deleteDataSpecifics
+                  deleteDate: new Date()
+                }
+
                 if request.auth.credentials? and request.auth.credentials.user?
-                  @config.deleteLogger.info "#{@config.model.metadata.model} with id #{request.params.id} deleted by #{request.auth.credentials.user.username}."
+                  deleteData['whoDeleted'] = request.auth.credentials.user.username
                 else
-                  @config.deleteLogger.info "#{@config.model.metadata.model} with id #{request.params.id} deleted by anonymous."
-                  
+                  deleteData['whoDeleted'] = 'anonymous'
+
+                currentModelCollection = @config.mongoConf.mongoInstance.db().collection(@config.model.metadata.collectionName)
+                currentModelCollection.insert deleteData, (error, value) ->
+                  if (error)
+                    return reply Boom.badRequest error
+
               publishObj =
                 action: 'delete'
                 id: request.params.id

@@ -48,6 +48,9 @@ class BaseModel
     if not @metadata.model?
       @metadata.model = @name
 
+    # collection name used in case of MongoDB logging, translates e.g. AccountCategory to accountCategory
+    @metadata.collectionName = @name.substring(0, 1).toLowerCase() + @name.substring(1)
+
     # default 'singular' value is snake_case of Class e.g. account_category
     if not @metadata.singular?
       @metadata.singular = @_camelToSnakeCase @name
