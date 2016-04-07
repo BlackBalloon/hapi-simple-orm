@@ -265,6 +265,9 @@ class ModelView extends BaseView
             _.extend request.payload, { whoCreated: request.auth.credentials.user.id }
 
           @config.model.objects().create({ data: request.payload }).then (result) =>
+            if @config.createLogger?
+              @config.createLogger.info "#{@config.model.metadata.model} created: #{result}"
+              
             if ifSerialize
               serializerClass = if serializer then serializer else @config.serializer
               if not serializerClass?
