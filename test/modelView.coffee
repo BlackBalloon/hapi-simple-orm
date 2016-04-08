@@ -164,22 +164,70 @@ describe 'ModelView tests', ->
         if error
           return done error
 
-        console.log response.body
+        expect(response.body).to.contain.all.keys ['id', 'username']
+        expect(response.body.username).to.equal data.username
 
         done()
 
-  it 'should test query params of custom method', (done) ->
-
-    server.route userModelView.getUsername()
+  it 'GET on /users', (done) ->
 
     request('http://localhost:3000')
-      .get('/users/get_username?username=pbienias')
+      .get('/users')
       .expect(200)
       .end (error, response) ->
         if error
           return done error
 
-        console.log response.body
+        expect(response.body).to.be.an 'array'
+        _.each response.body, (user) ->
+          expect(user).to.contain.all.keys ['id', 'username']
+
+        done()
+
+  it 'GET on /users/1', (done) ->
+
+    request('http://localhost:3000')
+      .get('/users/1')
+      .expect(200)
+      .end (error, response) ->
+        if error
+          return done error
+
+        expect(response.body).to.contain.all.keys ['id', 'username']
+        expect(response.body.id).to.equal 1
+
+        done()
+
+  it 'PUT on /users/1', (done) ->
+
+    data =
+      username: 'piobie'
+
+    request('http://localhost:3000')
+      .put('/users/1')
+      .send(data)
+      .expect(200)
+      .end (error, response) ->
+        if error
+          return done error
+
+        done()
+
+  it 'PATCH on /users/1', (done) ->
+
+    data =
+      username: 'alenow'
+
+    request('http://localhost:3000')
+      .patch('/users/1')
+      .send(data)
+      .expect(200)
+      .end (error, response) ->
+        if error
+          return done error
+
+        expect(response.body).to.contain.all.keys ['id', 'username']
+        expect(response.body.username).to.equal data.username
 
         done()
 
@@ -189,9 +237,10 @@ describe 'ModelView tests', ->
       .get('/users?fields=id&fields=username&fields=isDeleted')
       .expect(200)
       .end (error, response) ->
-        console.log response.body
+
         expect(response.body).to.be.an 'array'
         expect(response.body[0]).to.have.all.keys ['id', 'username', 'isDeleted']
+
         done()
 
   it 'should test query fields param on .get()', (done) ->
@@ -200,7 +249,9 @@ describe 'ModelView tests', ->
       .get('/users/1?fields=id&fields=username')
       .expect(200)
       .end (error, response) ->
+
         expect(response.body).to.have.all.keys ['id', 'username']
+
         done()
 
   it 'should return 400 on query fields param (does not match)', (done) ->
@@ -209,6 +260,8 @@ describe 'ModelView tests', ->
       .get('/users/1?fields=id&fields=test')
       .expect(400)
       .end (error, response) ->
+
         expect(response.body.statusCode).to.equal 400;
         expect(response.body).to.have.property 'message';
+
         done()

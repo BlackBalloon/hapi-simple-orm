@@ -8,6 +8,8 @@ BaseView    = require './baseView'
 
 moduleKeywords = ['extended', 'included']
 
+require 'datejs'
+
 
 class ModelView extends BaseView
 
@@ -264,19 +266,16 @@ class ModelView extends BaseView
           if request.auth.credentials?
             _.extend request.payload, { whoCreated: request.auth.credentials.user.id }
 
-          console.log request
           @config.model.objects().create({ data: request.payload }).then (result) =>
             if @config.mongoConf? and @config.mongoConf.mongoInstance?
-
-              whoCreated = if request.auth.credentials? then request.auth.credentials.user else 'undefined'
 
               insertData = {
                 model: @config.model.metadata.model
                 module: @config.mongoConf.module || 'undefined'
-                whoCreated: whoCreated
+                whoPerformed: if request.auth.credentials? then request.auth.credentials.user else 'undefined'
                 action: 'create'
-                data: request.payload
-                createDate: new Date()
+                payload: request.payload
+                actionDate: new Date()
                 userAgent: request.orig.headers['user-agent']
               }
 
@@ -347,8 +346,28 @@ class ModelView extends BaseView
         handler: (request, reply) =>
           @config.model.objects().getById({ pk: request.params.id }).then (instance) =>
             if instance?
+              previousData = instance.toJSON { attributes: _.keys(@config.model::attributes) }
+
               instance.set request.payload
               instance.save().then (result) =>
+
+                if @config.mongoConf? and @config.mongoConf.mongoInstance?
+                  insertData = {
+                    model: @config.model.metadata.model
+                    module: @config.mongoConf.module || 'undefined'
+                    whoPerformed: if request.auth.credentials? then request.auth.credentials.user else 'undefined'
+                    action: if request.route.method is 'put' then 'update' else 'partialUpdate'
+                    payload: request.payload
+                    previousData: previousData
+                    actionDate: new Date().addHours(2)
+                    userAgent: request.orig.headers['user-agent']
+                  }
+
+                  currentModelCollection = @config.mongoConf.mongoInstance.db().collection(@config.model.metadata.collectionName)
+                  currentModelCollection.insert insertData, (error, value) =>
+                    if error and @config.model.objects().config.errorLogger?
+                      @config.model.objects().config.errorLogger.error error
+
                 if ifSerialize
                   serializerClass = if serializer then serializer else @config.serializer
                   if not serializerClass?
@@ -433,22 +452,20 @@ class ModelView extends BaseView
                 deleteDataSpecifics = {}
                 deleteDataSpecifics[@config.model.metadata.primaryKey] = request.params.id
 
-                whoDeleted = if request.auth.credentials? then request.auth.credentials.user else 'undefined'
-
                 deleteData = {
                   model: @config.model.metadata.model
                   module: @config.mongoConf.module || 'undefined'
-                  whoDeleted: whoDeleted
+                  whoPerformed: if request.auth.credentials? then request.auth.credentials.user else 'undefined'
                   action: 'delete'
-                  data: deleteDataSpecifics
-                  deleteDate: new Date()
+                  payload: request.params
+                  actionDate: new Date().addHours(2)
                   userAgent: request.orig.headers['user-agent']
                 }
 
                 currentModelCollection = @config.mongoConf.mongoInstance.db().collection(@config.model.metadata.collectionName)
                 currentModelCollection.insert deleteData, (error, value) =>
-                  if error and @config.model.objects().errorLogger?
-                    @config.model.objects().errorLogger.error error
+                  if error and @config.model.objects().config.errorLogger?
+                    @config.model.objects().config.errorLogger.error error
 
               publishObj =
                 action: 'delete'

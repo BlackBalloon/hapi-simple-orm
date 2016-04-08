@@ -61,9 +61,6 @@ describe 'BaseDAO tests', ->
           username: 'set test'
           accountCategory: result
 
-        user = new User userData
-        console.log user
-
         done()
       .catch (error) ->
         done error

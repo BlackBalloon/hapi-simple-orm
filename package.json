@@ -11,6 +11,7 @@
   "dependencies": {
     "bluebird": "^3.3.3",
     "boom": "^3.1.2",
+    "datejs": "^1.0.0-rc3",
     "fs": "0.0.2",
     "hapi": "^13.1.0",
     "joi": "^8.0.4",
