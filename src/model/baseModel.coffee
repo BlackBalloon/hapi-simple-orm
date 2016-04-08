@@ -80,7 +80,9 @@ class BaseModel
 
   @include: (obj) ->
     @::['attributes'] = {}
+    @::['fields'] = []
     for key, value of obj when key not in moduleKeywords
+      @::['fields'].push key
       @::['attributes'][key] = value
 
     _.extend @::['attributes'], @::timestampAttributes

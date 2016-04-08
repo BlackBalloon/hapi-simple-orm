@@ -346,7 +346,7 @@ class ModelView extends BaseView
         handler: (request, reply) =>
           @config.model.objects().getById({ pk: request.params.id }).then (instance) =>
             if instance?
-              previousData = instance.toJSON { attributes: _.keys(@config.model::attributes) }
+              previousData = instance.toJSON { attributes: @config.model::fields }
 
               instance.set request.payload
               instance.save().then (result) =>
