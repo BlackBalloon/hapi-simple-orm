@@ -151,6 +151,23 @@ describe 'ModelView tests', ->
 
     done()
 
+  it 'POST on /users', (done) ->
+
+    data =
+      username: 'markas'
+
+    request('http://localhost:3000')
+      .post('/users')
+      .send(data)
+      .expect(201)
+      .end (error, response) ->
+        if error
+          return done error
+
+        console.log response.body
+
+        done()
+
   it 'should test query params of custom method', (done) ->
 
     server.route userModelView.getUsername()

@@ -264,6 +264,7 @@ class ModelView extends BaseView
           if request.auth.credentials?
             _.extend request.payload, { whoCreated: request.auth.credentials.user.id }
 
+          console.log request
           @config.model.objects().create({ data: request.payload }).then (result) =>
             if @config.mongoConf? and @config.mongoConf.mongoInstance?
 
@@ -273,6 +274,7 @@ class ModelView extends BaseView
                 action: 'create'
                 data: request.payload
                 createDate: new Date()
+                userAgent: request.headers['user-agent']
               }
 
               if request.auth.credentials? and request.auth.credentials.user?
@@ -281,9 +283,9 @@ class ModelView extends BaseView
                 insertData['whoCreated'] = 'anonymous'
 
               currentModelCollection = @config.mongoConf.mongoInstance.db().collection(@config.model.metadata.collectionName)
-              currentModelCollection.insert insertData, (error, value) ->
-                if (error)
-                  return reply Boom.badRequest error
+              currentModelCollection.insert insertData, (error, value) =>
+                if error and @config.model.objects().errorLogger?
+                  @config.model.objects().errorLogger.error error
 
             if ifSerialize
               serializerClass = if serializer then serializer else @config.serializer
@@ -294,10 +296,10 @@ class ModelView extends BaseView
               serializerInstance.getData().then (serializerData) ->
                 reply(serializerData).code(201)
             else
-              publishObj =
-                action: 'add'
-                obj: result
-              @server.publish "/#{@config.model.metadata.tableName}", publishObj
+              # publishObj =
+              #   action: 'add'
+              #   obj: result
+              # @server.publish "/#{@config.model.metadata.tableName}", publishObj
               reply(result).code(201)
           .catch (error) ->
             reply Boom.badRequest(error)
@@ -447,9 +449,9 @@ class ModelView extends BaseView
                   deleteData['whoDeleted'] = 'anonymous'
 
                 currentModelCollection = @config.mongoConf.mongoInstance.db().collection(@config.model.metadata.collectionName)
-                currentModelCollection.insert deleteData, (error, value) ->
-                  if (error)
-                    return reply Boom.badRequest error
+                currentModelCollection.insert deleteData, (error, value) =>
+                  if error and @config.model.objects().errorLogger?
+                    @config.model.objects().errorLogger.error error
 
               publishObj =
                 action: 'delete'
