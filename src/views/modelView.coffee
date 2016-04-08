@@ -268,19 +268,17 @@ class ModelView extends BaseView
           @config.model.objects().create({ data: request.payload }).then (result) =>
             if @config.mongoConf? and @config.mongoConf.mongoInstance?
 
+              whoCreated = if request.auth.credentials? then request.auth.credentials.user else 'undefined'
+
               insertData = {
                 model: @config.model.metadata.model
                 module: @config.mongoConf.module || 'undefined'
+                whoCreated: whoCreated
                 action: 'create'
                 data: request.payload
                 createDate: new Date()
-                userAgent: request.headers['user-agent']
+                userAgent: request.orig.headers['user-agent']
               }
-
-              if request.auth.credentials? and request.auth.credentials.user?
-                insertData['whoCreated'] = request.auth.credentials.user.username
-              else
-                insertData['whoCreated'] = 'anonymous'
 
               currentModelCollection = @config.mongoConf.mongoInstance.db().collection(@config.model.metadata.collectionName)
               currentModelCollection.insert insertData, (error, value) =>
@@ -435,18 +433,17 @@ class ModelView extends BaseView
                 deleteDataSpecifics = {}
                 deleteDataSpecifics[@config.model.metadata.primaryKey] = request.params.id
 
+                whoDeleted = if request.auth.credentials? then request.auth.credentials.user else 'undefined'
+
                 deleteData = {
                   model: @config.model.metadata.model
                   module: @config.mongoConf.module || 'undefined'
+                  whoDeleted: whoDeleted
                   action: 'delete'
                   data: deleteDataSpecifics
                   deleteDate: new Date()
+                  userAgent: request.orig.headers['user-agent']
                 }
-
-                if request.auth.credentials? and request.auth.credentials.user?
-                  deleteData['whoDeleted'] = request.auth.credentials.user.username
-                else
-                  deleteData['whoDeleted'] = 'anonymous'
 
                 currentModelCollection = @config.mongoConf.mongoInstance.db().collection(@config.model.metadata.collectionName)
                 currentModelCollection.insert deleteData, (error, value) =>
