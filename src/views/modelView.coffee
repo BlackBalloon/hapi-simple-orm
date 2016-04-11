@@ -299,6 +299,8 @@ class ModelView extends BaseView
               # @server.publish "/#{@config.model.metadata.tableName}", publishObj
               reply(result).code(201)
           .catch (error) ->
+            if error.error is 'ValidationError'
+              return reply(error).code(400)
             reply Boom.badRequest(error)
 
     if options? and _.isObject(options)
@@ -380,6 +382,8 @@ class ModelView extends BaseView
                   reply result
               .catch (error) ->
                 # TODO: add custom ValidationError class in order to distinguish the reply message (Boom or simply error)
+                if error.error is 'ValidationError'
+                  return reply(error).code(400)
                 return reply(Boom.badRequest(error))
             else
               return reply Boom.notFound @config.errorMessages.notFound || "#{@config.model.metadata.model} does not exist"
