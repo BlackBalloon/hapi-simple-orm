@@ -277,9 +277,10 @@ class BaseModel
       # change array format of the validation result to object
       _.each (_.compact values), (val, key) ->
         _.extend validationResultObject, val
+      finalValidationError = {}
       if not (_.isEmpty(validationResultObject))
-        _.extend validationResultObject, { error: 'ValidationError' }
-      validationResultObject
+        _.extend validationResultObject, { error: 'ValidationError', fields: validationResultObject }
+      finalValidationError
 
   # Instance method which performs Model save to the database
   # First, the validation is performed - if it passes, then model is saved
