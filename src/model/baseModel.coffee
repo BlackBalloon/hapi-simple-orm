@@ -279,7 +279,7 @@ class BaseModel
         _.extend validationResultObject, val
       finalValidationError = {}
       if not (_.isEmpty(validationResultObject))
-        _.extend validationResultObject, { error: 'ValidationError', fields: validationResultObject }
+        _.extend finalValidationError, { error: 'ValidationError', fields: validationResultObject }
       finalValidationError
 
   # Instance method which performs Model save to the database
