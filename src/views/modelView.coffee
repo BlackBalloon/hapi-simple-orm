@@ -127,17 +127,11 @@ class ModelView extends BaseView
         handler: (request, reply) =>
           returning = undefined
           if request.query.fields?
-            try
-              returning = _.map request.query.fields, (field) =>
-                if field not of @config.model::attributes
-                  throw new Error "Field '#{field}' does not match any attribute of model #{@config.model.metadata.model}"
-
-                if not @config.allowTimestampAttributes and field of @config.model::timestampAttributes
-                  throw new Error "Field '#{field}' does not match any attribute of model #{@config.model.metadata.model}"
-
-                "#{@config.model::attributes[field].getDbField(field)} AS #{field}"
-            catch error
-              return reply Boom.badRequest(error)
+            if not @config.allowTimestampAttributes?
+              _.each returning, (fieldName) =>
+                if fieldName of @config.model::timestampAttributes
+                  return reply Boom.badRequest("Field #{fieldName} is not attribute of model #{@config.model.metadata.model}")
+            returning = request.query.fields
 
           @config.model.objects().getById({ pk: request.params.id, returning: returning }).then (result) =>
             if result?
@@ -198,17 +192,11 @@ class ModelView extends BaseView
         handler: (request, reply) =>
           returning = undefined
           if request.query.fields?
-            try
-              returning = _.map request.query.fields, (field) =>
-                if field not of @config.model::attributes
-                  throw new Error "Field '#{field}' does not match any attribute of model #{@config.model.metadata.model}"
-
-                if not @config.allowTimestampAttributes and field of @config.model::timestampAttributes
-                  throw new Error "Field '#{field}' does not match any attribute of model #{@config.model.metadata.model}"
-
-                "#{@config.model::attributes[field].getDbField(field)} AS #{field}"
-            catch error
-              return reply Boom.badRequest(error)
+            if not @config.allowTimestampAttributes?
+              _.each returning, (fieldName) =>
+                if fieldName of @config.model::timestampAttributes
+                  return reply Boom.badRequest("Field '#{fieldName}' is not attribute of model #{@config.model.metadata.model}")
+            returning = request.query.fields
 
           @config.model.objects().all({ returning: returning }).then (objects) =>
             if ifSerialize
@@ -298,9 +286,10 @@ class ModelView extends BaseView
               #   obj: result
               # @server.publish "/#{@config.model.metadata.tableName}", publishObj
               reply(result).code(201)
-          .catch (error) ->
+          .catch (error) =>
             if error.error is 'ValidationError'
               return reply(error.fields).code(400)
+
             reply Boom.badRequest(error)
 
     if options? and _.isObject(options)
@@ -380,10 +369,11 @@ class ModelView extends BaseView
                     reply serializerData
                 else
                   reply result
-              .catch (error) ->
-                # TODO: add custom ValidationError class in order to distinguish the reply message (Boom or simply error)
+              .catch (error) =>
+                # if the error from DAO is of ValidationError class, then we simply return fields attribute of error
                 if error.error is 'ValidationError'
                   return reply(error.fields).code(400)
+
                 return reply(Boom.badRequest(error))
             else
               return reply Boom.notFound @config.errorMessages.notFound || "#{@config.model.metadata.model} does not exist"
@@ -477,7 +467,7 @@ class ModelView extends BaseView
               @server.publish "/#{@config.model.metadata.tableName}", publishObj
               return reply result
             return reply Boom.notFound @config.errorMessages.notFound || "#{@config.model.metadata.model} does not exist!"
-          .catch (error) ->
+          .catch (error) =>
             reply Boom.badRequest error
 
     if options? and _.isObject(options)

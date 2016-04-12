@@ -5,9 +5,7 @@ BaseDAO = require './../../lib/dao/baseDao'
 config = {
   returning:
     basic: [
-      'id',
-      'username',
-      'accountCategory'
+      '*'
     ]
 }
 

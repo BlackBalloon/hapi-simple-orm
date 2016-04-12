@@ -126,7 +126,7 @@ describe 'BaseDAO tests', ->
       accountCategory.save().then (result) ->
         done new Error 'Test passed, wrong!'
       .catch (error) ->
-        expect(error).to.have.property 'name'
+        expect(error.fields).to.have.property 'name'
         done()
 
     it 'should return error on user create - foreign key constraint', (done) ->
@@ -138,7 +138,7 @@ describe 'BaseDAO tests', ->
       User.objects().create({ data: data }).then (user) ->
         done new Error 'Test passed, wrong!'
       .catch (error) ->
-        error.should.have.property 'accountCategory'
+        error.fields.should.have.property 'accountCategory'
         done()
 
     it 'should perform bulkCreate of categories', (done) ->

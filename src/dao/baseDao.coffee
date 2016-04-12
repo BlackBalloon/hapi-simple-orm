@@ -8,6 +8,43 @@ Promise     = require 'bluebird'
 moduleKeywords = ['extended', 'included']
 
 
+translateReturningToDatabase = (returning, model, dao) ->
+
+  if returning? and _.isArray(returning)
+    tempReturningArray = _.each returning, (field) ->
+      if field of model::attributes
+        if not model::attributes[field].attributes.abstract?
+          field
+      else
+        throw new Error "Field '#{field}' from #{model.metadata.model} is not an attribute of this model"
+  else
+    if returning? and _.isString(returning) and returning of dao.config.returning
+      defaultReturningArray = dao.config.returning[returning]
+    else
+      if dao.config.returning? and dao.config.returning.basic?
+        defaultReturningArray = dao.config.returning.basic
+      else
+        defaultReturningArray = ['*']
+
+    if _.contains(defaultReturningArray, '*')
+      tempReturningArray = _.map(model::attributes, (fieldVal, modelField) ->
+        if not fieldVal.attributes.abstract? and not (modelField of model::timestampAttributes)
+          "#{modelField}"
+      )
+    else
+      tempReturningArray = _.clone defaultReturningArray
+
+  returningArray = _.without tempReturningArray, undefined
+
+  if _.indexOf(returningArray, model.metadata.primaryKey) is -1
+    returningArray.unshift model.metadata.primaryKey
+
+  finalReturningArray = _.map returningArray, (field) ->
+    "#{model::attributes[field].getDbField(field)} AS #{field}"
+
+  finalReturningArray
+
+
 class BaseDAO
 
   @applyConfiguration: (obj) ->
@@ -30,35 +67,10 @@ class BaseDAO
     if not @config.lookupField?
       @config.lookupField = @config.model.metadata.primaryKey
 
-    # set default 'returning' attribute of 'config'
-    # and it's 'basic' value to ['*'] - return all fields
-    if not @config.returning?
-      @config.returning = {}
-      @config.returning['basic'] = ['*']
-
-    # check if '@config.returning.basic' array contains '*'
-    # if it does, it means that each query using this returning
-    # should return all attributes of given model
-    if _.contains @config.returning.basic, '*'
-      returningArray = _.map @config.model::attributes, (val, key) =>
-        if not (key of @config.model::timestampAttributes) and not val.attributes.abstract?
-          "#{key}"
-      @config.returning.basic = _.without returningArray, undefined
-
-    # iterate over every array from config.returning and translate camelCase field
-    # to database snake_case equivalent for current model
-    newReturning = {}
     _.each @config.returning, (returningArray, key) =>
-      newReturningArray = _.map returningArray, (fieldName) =>
-        if not ([" AS "].some (word) -> ~fieldName.indexOf word)
-          if fieldName not of @config.model::attributes
-            throw new Error "Field '#{fieldName}' from 'config.returning' of #{@config.model.metadata.model} is not an attribute of this model"
-          "#{@config.model::attributes[fieldName].getDbField(fieldName)} AS #{fieldName}"
-        else
-          "#{fieldName}"
-      newReturning[key] = newReturningArray
-
-    @config.returning = newReturning
+      _.each returningArray, (field) =>
+        if not (field of @config.model::attributes) and field isnt '*'
+          throw new Error "Field '#{field}' of 'config.returning' of #{@config.model.metadata.model} is not an attribute of this model."
 
 
   # return specified instance of given Model by it's 'primaryKey' attribute
@@ -73,12 +85,17 @@ class BaseDAO
     if not pk?
       throw new Error "'getById' method requires value for 'pk' parameter!"
 
-    returning ?= @config.returning.basic
+    try
+      returningArray = translateReturningToDatabase(returning, @config.model, @)
+    catch error
+      return new Promise (resolve, reject) ->
+        reject error
+
 
     knex(@config.model.metadata.tableName)
       .where(@config.model.metadata.primaryKey, pk)
       .andWhere('is_deleted', false)
-      .select(returning)
+      .select(returningArray)
       .then (rows) =>
         # throw error if query returned more than 1 row - it definitely should not do that
         if rows.length > 1
@@ -113,12 +130,16 @@ class BaseDAO
       databaseKey = @config.model::attributes[key].getDbField(key)
       where[databaseKey] = val
 
-    returning ?= @config.returning.basic
+    try
+      returningArray = translateReturningToDatabase(returning, @config.model, @)
+    catch error
+      throw error
+
 
     knex(@config.model.metadata.tableName)
       .where(where)
       .andWhere('is_deleted', false)
-      .select(returning)
+      .select(returningArray)
       .then (rows) =>
         # throw error if query returned more than 1 row - it definitely should not do that
         if rows.length > 1
@@ -164,10 +185,14 @@ class BaseDAO
       throw new Error "'orderBy' should be an object with 'column' and 'direction' attributes " +
                       "or name of the field of #{@config.model.metadata.model}!"
 
-    returning ?= @config.returning.basic
+    try
+      returningArray = translateReturningToDatabase(returning, @config.model, @)
+    catch error
+      return new Promise (resolve, reject) ->
+        reject error
 
     knexQuery = knex(@config.model.metadata.tableName)
-      .select(returning)
+      .select(returningArray)
       .where('is_deleted', false)
 
     # apply ordering if 'orderBy' exists
@@ -195,7 +220,8 @@ class BaseDAO
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
 
-    returning ?= @config.returning.basic
+    returningArray = translateReturningToDatabase(returning, @config.model, @)
+
     # default 'lookup' value is set to '{}' if none was passed
     lookup ?= [{ key: 'where', values: {} }]
 
@@ -221,7 +247,7 @@ class BaseDAO
       throw new Error "'orderBy' should be an object with 'column' and 'direction' attributes " +
                       "or name of the field of #{@config.model.metadata.model}!"
 
-    query = knex(@config.model.metadata.tableName).select(returning)
+    query = knex(@config.model.metadata.tableName).select(returningArray)
 
     # iterate over every object from 'lookup' attribute
     # every object should contain two keys: 'key' and 'values'
@@ -279,7 +305,7 @@ class BaseDAO
     toObject ?= true
     direct ?= true
 
-    returning ?= @config.returning.basic
+    returningArray = translateReturningToDatabase(returning, @config.model, @)
 
     validationPromise = null
 
@@ -300,7 +326,7 @@ class BaseDAO
         throw validationErrors[0]
 
       return knex(@config.model.metadata.tableName)
-        .insert(data, returning)
+        .insert(data, returningArray)
         .then (rows) =>
           # if toObject was set to true we need to check if created result
           # was returned from the database, otherwise we should return empty result
@@ -325,7 +351,7 @@ class BaseDAO
     # default value of 'toObject' is set to true
     toObject ?= true
     # default 'returning' array is taken from the Model's DAO configuration
-    returning ?= @config.returning.basic
+    returningArray = translateReturningToDatabase(returning, @config.model, @)
 
     # it is necessary to validate and create first object from the data
     # explicity in order to perform validation of further elements
@@ -347,7 +373,7 @@ class BaseDAO
           throw firstObjectValidation
 
         # insert first object to the database
-        knex.insert(firstObject._toDatabaseFields(), returning)
+        knex.insert(firstObject._toDatabaseFields(), returningArray)
           .into(tableName)
           .transacting(trx)
           .then (result) ->
@@ -364,7 +390,7 @@ class BaseDAO
                 if not (_.isEmpty currentObjectValidation)
                   throw currentObjectValidation
 
-                return knex.insert(currentObject._toDatabaseFields(), returning)
+                return knex.insert(currentObject._toDatabaseFields(), returningArray)
                   .into(tableName)
                   .transacting(trx)
                   .then (result) ->
@@ -395,7 +421,7 @@ class BaseDAO
     else if obj? and not (obj instanceof @config.model)
       throw new Error "'obj' attribute passed to #{@constructor.name} 'update()' method should be an instance of #{@config.model.metadata.model}"
 
-    returning ?= @config.returning.basic
+    returningArray = translateReturningToDatabase(returning, @config.model, @)
 
     lookup = {}
     lookup[@config.lookupField] = obj.get @config.lookupField
@@ -403,7 +429,7 @@ class BaseDAO
     knex(@config.model.metadata.tableName)
       .where(lookup)
       .andWhere('is_deleted', false)
-      .update(obj._toDatabaseFields(), returning)
+      .update(obj._toDatabaseFields(), returningArray)
       .then (rows) =>
         # if 'toObject' was set to true we need to check if updated result
         # was returned from the db, otherwise empty result is returned
