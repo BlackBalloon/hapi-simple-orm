@@ -22,12 +22,6 @@ describe 'BaseDAO tests', ->
     .catch (error) ->
       done error
 
-  after (done) ->
-    knex.migrate.rollback().then ->
-      done()
-    .catch (error) ->
-      done error
-
   describe 'creating new instances', ->
 
     it 'should create new account category', (done) ->
@@ -174,6 +168,14 @@ describe 'BaseDAO tests', ->
 
   describe 'returning instances', ->
 
+    it.skip 'should test filterPaged() method of DAO', (done) ->
+
+      AccountCategory.objects().filterPaged({ orderBy: 'name', limit: 10, page: 2}).then (result) ->
+        console.log result
+        done()
+      .catch (error) ->
+        done error
+
     it 'should return category by id with getById method', (done) ->
 
       AccountCategory.objects().getById({ pk: 1 }).then (category) ->
@@ -193,7 +195,7 @@ describe 'BaseDAO tests', ->
 
     it 'should order categories by ID descending', (done) ->
 
-      AccountCategory.objects().all({ orderBy: { column: 'id', direction: 'desc' }, returning: ['id'], toObject: false }).then (categories) ->
+      AccountCategory.objects().all({ orderBy: '-id', returning: ['id'], toObject: false }).then (categories) ->
         expect(categories).to.be.an 'array'
         console.log _.pluck categories, 'id'
         done()
@@ -203,6 +205,15 @@ describe 'BaseDAO tests', ->
     it 'should order categories by name ascending', (done) ->
 
       AccountCategory.objects().all({ orderBy: 'name', toObject: false, returning: ['name'] }).then (categories) ->
+        console.log _.pluck categories, 'name'
+        done()
+      .catch (error) ->
+        done error
+
+    it 'should order categories by name descending', (done) ->
+
+      AccountCategory.objects().all({ orderBy: '-name', toObject: false, returning: ['name'] }).then (categories) ->
+        expect(categories).to.be.an 'array'
         console.log _.pluck categories, 'name'
         done()
       .catch (error) ->
@@ -236,10 +247,20 @@ describe 'BaseDAO tests', ->
 
   describe 'deleting instances', ->
 
-    it 'should delete category with id = 3', (done) ->
+    it.skip 'should delete category with id = 3', (done) ->
 
       AccountCategory.objects().delete(3).then (result) ->
         expect(result).to.equal 1
+        done()
+      .catch (error) ->
+        done error
+
+    it 'should delete categories with ids 2 and 3', (done) ->
+
+      ids = [2, 3]
+      AccountCategory.objects().deleteMany(ids).then (result) ->
+        expect(result).to.be.an 'array'
+        expect(result).to.eql ids
         done()
       .catch (error) ->
         done error

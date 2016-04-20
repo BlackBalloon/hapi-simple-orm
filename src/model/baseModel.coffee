@@ -149,9 +149,8 @@ class BaseModel
   # simple Class Method which returns object containing all keys of the Model
   # and 'schema' (Joi validation objects) as value for every key
   @getSchema: (fields, partial) ->
-    fields ?= _.keys @::attributes
-    attributesWithSchema = _.pick @::attributes, (val, key) ->
-      val.attributes.schema? and not (key of BaseModel::timestampAttributes) and key in fields
+    attributesWithSchema = _.pick @::attributes, (val, key) =>
+      val.attributes.schema? and not (key of BaseModel::timestampAttributes) and key in @::fields
 
     _.mapObject attributesWithSchema, (val, key) ->
       schema = val.attributes.schema
@@ -170,7 +169,7 @@ class BaseModel
     _.each @attributes, (val, key) =>
       # adding many to many related attributes to model's instance
       if val instanceof ManyToMany
-        if not _.has val.attributes, 'throughFields'
+        if not (_.has val.attributes, 'throughFields')
           toModel = require val.attributes.toModel
           throughFields = []
           throughFields.push @constructor.metadata.singular + '_' + @constructor.metadata.primaryKey
@@ -180,7 +179,7 @@ class BaseModel
 
       # adding many to one related attributes to model's instance
       if val instanceof ManyToOne
-        if not(_.has val.attributes, 'referenceField')
+        if not (_.has val.attributes, 'referenceField')
           val.attributes.referenceField = @constructor.metadata.singular + '_' + @constructor.metadata.primaryKey
         @[key] = new manyToOneManager @, key, val
 

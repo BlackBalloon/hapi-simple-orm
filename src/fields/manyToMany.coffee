@@ -22,6 +22,10 @@ class ManyToMany
     @attributes = _.reduce @attributes, (memo, value) ->
       return value
 
+    _.each @attributes, (val, key) =>
+      if key not in @constructor.acceptedParameters
+        throw new TypeError "Key '#{key}' is not accepted in field #{@attributes.name}!"
+
     # default Joi validation schema for M2M relation is array of positive integers
     if not(_.has @attributes, 'schema')
       _.extend @attributes, { schema: Joi.array(Joi.number().integer().positive()) }
@@ -29,10 +33,6 @@ class ManyToMany
     # we add the abstract attribute to the relation, because it is not directly saved
     # in current model's database table
     @attributes['abstract'] = true
-
-    _.each @attributes, (val, key) =>
-      if key not in @constructor.acceptedParameters
-        throw new TypeError "Key '#{key}' is not accepted in field #{@attributes.name}!"
 
 
   # This class creates access to related attributes from many-to-many

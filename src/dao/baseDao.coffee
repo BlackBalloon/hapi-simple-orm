@@ -8,43 +8,6 @@ Promise     = require 'bluebird'
 moduleKeywords = ['extended', 'included']
 
 
-translateReturningToDatabase = (returning, model, dao) ->
-
-  if returning? and _.isArray(returning)
-    tempReturningArray = _.each returning, (field) ->
-      if field of model::attributes
-        if not model::attributes[field].attributes.abstract?
-          field
-      else
-        throw new Error "Field '#{field}' from #{model.metadata.model} is not an attribute of this model"
-  else
-    if returning? and _.isString(returning) and returning of dao.config.returning
-      defaultReturningArray = dao.config.returning[returning]
-    else
-      if dao.config.returning? and dao.config.returning.basic?
-        defaultReturningArray = dao.config.returning.basic
-      else
-        defaultReturningArray = ['*']
-
-    if _.contains(defaultReturningArray, '*')
-      tempReturningArray = _.map(model::attributes, (fieldVal, modelField) ->
-        if not fieldVal.attributes.abstract? and not (modelField of model::timestampAttributes)
-          "#{modelField}"
-      )
-    else
-      tempReturningArray = _.clone defaultReturningArray
-
-  returningArray = _.without tempReturningArray, undefined
-
-  if _.indexOf(returningArray, model.metadata.primaryKey) is -1
-    returningArray.unshift model.metadata.primaryKey
-
-  finalReturningArray = _.map returningArray, (field) ->
-    "#{model::attributes[field].getDbField(field)} AS #{field}"
-
-  finalReturningArray
-
-
 class BaseDAO
 
   @applyConfiguration: (obj) ->
@@ -72,6 +35,86 @@ class BaseDAO
         if not (field of @config.model::attributes) and field isnt '*'
           throw new Error "Field '#{field}' of 'config.returning' of #{@config.model.metadata.model} is not an attribute of this model."
 
+  # method which obtains array of fields to be returned from current DAO method
+  # it validates whether passed fields are correct attributes of current model
+  # and translates them to it's equivalent database representation
+  # @param [Array] returning array of fields to be returned from current DAO operation
+  _translateReturningToDatabase: (returning) ->
+
+    # if 'returning' array was passed to the metod in form of array, we need to check if all those fields
+    # are attributes of given model
+    if returning? and _.isArray(returning)
+      tempReturningArray = _.each returning, (field) =>
+        # check if every value of array is string and is attribute of model and is not set as an abstract attribute
+        if _.isString(field) and field of @config.model::attributes and not @config.model::attributes[field].attributes.abstract?
+          field
+        else
+          # otherwise throw an error
+          throw new Error "Field '#{field}' from #{@config.model.metadata.model} is not an attribute of this model or is set as an 'abstract'."
+
+    # otherwise if 'returning' was passed in form of String, we need to check if this string is one of dao.config.returning arrays
+    else if returning? and _.isString(returning)
+      if returning of @config.returning
+        defaultReturningArray = @config.returning[returning]
+      else
+        # if passed 'returning' string is not one of dao.config.returning, throw error with appropriate message
+        throw new Error "Returning '#{returning}' is not one of dao.config.returning of '#{@config.model.metadata.model}'."
+
+    # if the 'returning' was not passed or it isn't a string or array, use the configuration returning array
+    else if not returning? or (returning? and not _.isArray(returning) and not _.isString(returning))
+      defaultReturningArray = if @config.returning? and @config.returning.basic? then @config.returning.basic else ['*']
+
+    # if the returning array constains '*' then it means that all fields should be returned
+    if defaultReturningArray? and _.contains(defaultReturningArray, '*')
+      tempReturningArray = _.map(@config.model::attributes, (fieldVal, modelField) =>
+        if not fieldVal.attributes.abstract? and not (modelField of @config.model::timestampAttributes)
+          "#{modelField}"
+      )
+    else if defaultReturningArray?
+      tempReturningArray = _.clone defaultReturningArray
+
+    # remove undefined values from returning array
+    returningArray = _.without tempReturningArray, undefined
+
+    # check if primary key of model is in the returning array
+    # if no, then append it to the beginning of the array
+    if _.indexOf(returningArray, @config.model.metadata.primaryKey) is -1
+      returningArray.unshift @config.model.metadata.primaryKey
+
+    # map field values to database equivalent e.g. account_category AS accountCategory
+    finalReturningArray = _.map returningArray, (field) =>
+      "#{@config.model::attributes[field].getDbField(field)} AS #{field}"
+
+    finalReturningArray
+
+
+  # method which validates if passed 'orderBy' property to current DAO method is correct
+  # it should be a string which is one of current model's attributes, optionally with '-' sign at the beginning
+  # in order to define descending direction of ordering
+  # @param [String] orderBy name of model's attribute by which the results will be sorted, can be with '-' sign
+  _validateOrderBy: (orderBy) =>
+    # check if 'orderBy' is string and is name of attribute of current model and does not have '-' sign at the beginning
+    if orderBy? and typeof orderBy is 'string' and orderBy.charAt(0) isnt '-' and orderBy of @config.model::attributes
+      column = @config.model::attributes[orderBy].attributes.dbField
+      orderByObject =
+        column: column
+        direction: 'asc'
+    # the same conditions as previously, except that we check if there is a '-' sign at the beginning
+    # which defines the ordering direction as 'descending'
+    else if orderBy? and typeof orderBy is 'string' and orderBy.charAt(0) is '-' and orderBy.substr(1) of @config.model::attributes
+      column = @config.model::attributes[orderBy.substr(1)].attributes.dbField
+      orderByObject =
+        column: column
+        direction: 'desc'
+    else if orderBy?
+      throw new Error "'orderBy' attribute of '#{@constructor.name}' method should be attribute of #{@config.model.metadata.model}, optionaly with '-' sign!"
+    else
+      orderByObject =
+        column: @config.model.metadata.primaryKey
+        direction: 'asc'
+
+    orderByObject
+
 
   # return specified instance of given Model by it's 'primaryKey' attribute
   # @param [Any] val value of the primary key
@@ -86,7 +129,7 @@ class BaseDAO
       throw new Error "'getById' method requires value for 'pk' parameter!"
 
     try
-      returningArray = translateReturningToDatabase(returning, @config.model, @)
+      returningArray = @_translateReturningToDatabase(returning)
     catch error
       return new Promise (resolve, reject) ->
         reject error
@@ -131,9 +174,10 @@ class BaseDAO
       where[databaseKey] = val
 
     try
-      returningArray = translateReturningToDatabase(returning, @config.model, @)
+      returningArray = @_translateReturningToDatabase(returning)
     catch error
-      throw error
+      return new Promise (resolve, reject) ->
+        reject error
 
 
     knex(@config.model.metadata.tableName)
@@ -163,30 +207,9 @@ class BaseDAO
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
 
-    # if 'orderBy' is a string (field name), we check if it exists in Model attributes
-    if orderBy? and typeof orderBy is 'string' and orderBy of @config.model::attributes
-      column = @config.model::attributes[orderBy].attributes.dbField
-      # if it does exist, we get the dbField and set the direction to 'asc'
-      orderBy =
-        column: column
-        direction: 'asc'
-    # otherwise, if 'orderBy' is object, we check if it has 'column' attribute and if it exists in Model's attributes
-    else if orderBy? and _.isObject(orderBy) and 'column' in _.keys(orderBy) and orderBy.column of @config.model::attributes
-      orderBy.column = @config.model::attributes[orderBy.column].attributes.dbField
-
-      # if the direction attribute is present in orderBy, we check if it is one of ['asc', 'desc']
-      if orderBy.direction? and not (orderBy.direction in ['asc', 'desc'])
-        throw new Error "'direction' attribute of 'orderBy' object should be one of: asc, desc!"
-
-      # if there was no 'direction' attribute in 'orderBy' object, we set default value to 'asc'
-      orderBy.direction ?= 'asc'
-    else if orderBy?
-      # otherwise throw an error with proper message
-      throw new Error "'orderBy' should be an object with 'column' and 'direction' attributes " +
-                      "or name of the field of #{@config.model.metadata.model}!"
-
     try
-      returningArray = translateReturningToDatabase(returning, @config.model, @)
+      returningArray = @_translateReturningToDatabase(returning)
+      orderByObject = @_validateOrderBy(orderBy)
     catch error
       return new Promise (resolve, reject) ->
         reject error
@@ -196,8 +219,8 @@ class BaseDAO
       .where('is_deleted', false)
 
     # apply ordering if 'orderBy' exists
-    if orderBy?
-      knexQuery.orderBy(orderBy.column, orderBy.direction)
+    if orderByObject?
+      knexQuery.orderBy(orderByObject.column, orderByObject.direction)
 
     knexQuery.then (rows) =>
         # if result is to be translated to Model instances, we need to check
@@ -211,6 +234,29 @@ class BaseDAO
           @config.errorLogger.error error
         throw error
 
+  filterPaged: ({ lookup, orderBy, returning, toObject, limit, page }) ->
+    lookup ?= {}
+    lookup['is_deleted'] = false
+    toObject ?= true
+
+    try
+      returningArray = @_translateReturningToDatabase(returning)
+      orderByObject = @_validateOrderBy(orderBy)
+    catch error
+      return new Promise (resolve, reject) ->
+        reject error
+
+    return knex(@config.model.metadata.tableName)
+      .select(returningArray)
+      .where(lookup)
+      .orderBy(orderByObject.column, orderByObject.direction)
+      .limit(limit)
+      .offset((page - 1) * limit)
+      .then (result) ->
+        return result
+      .catch (error) ->
+        throw error
+
   # find Model's instances fulfilling given lookup values
   # @param [Array] lookup array of objects with keys: 'key', 'values'. Defines the filtering attributes like 'where', 'orWhere', 'whereIn' etc.
   # @param [Array] returning array of fields to be returned from the DB e.g. ['id', 'name']
@@ -220,32 +266,15 @@ class BaseDAO
     # which means that if it is not passed, query will always return Model instances
     toObject ?= true
 
-    returningArray = translateReturningToDatabase(returning, @config.model, @)
-
     # default 'lookup' value is set to '{}' if none was passed
     lookup ?= [{ key: 'where', values: {} }]
 
-    # if 'orderBy' is a string (field name), we check if it exists in Model attributes
-    if orderBy? and typeof orderBy is 'string' and orderBy of @config.model::attributes
-      column = @config.model::attributes[orderBy].attributes.dbField
-      # if it does exist, we get the dbField and set the direction to 'asc'
-      orderBy =
-        column: column
-        direction: 'asc'
-    # otherwise, if 'orderBy' is object, we check if it has 'column' attribute and if it exists in Model's attributes
-    else if orderBy? and _.isObject(orderBy) and 'column' in _.keys(orderBy) and orderBy.column of @config.model::attributes
-      orderBy.column = @config.model::attributes[orderBy.column].attributes.dbField
-
-      # if the direction attribute is present in orderBy, we check if it is one of ['asc', 'desc']
-      if orderBy.direction? and not (orderBy.direction in ['asc', 'desc'])
-        throw new Error "'direction' attribute of 'orderBy' object should be one of: asc, desc!"
-
-      # if there was no 'direction' attribute in 'orderBy' object, we set default value to 'asc'
-      orderBy.direction ?= 'asc'
-    else if orderBy?
-      # otherwise throw an error with proper message
-      throw new Error "'orderBy' should be an object with 'column' and 'direction' attributes " +
-                      "or name of the field of #{@config.model.metadata.model}!"
+    try
+      returningArray = @_translateReturningToDatabase(returning)
+      orderByObject = @_validateOrderBy(orderBy)
+    catch error
+      return new Promise (resolve, reject) ->
+        reject error
 
     query = knex(@config.model.metadata.tableName).select(returningArray)
 
@@ -278,8 +307,8 @@ class BaseDAO
     query.andWhere('is_deleted', false)
 
     # apply ordering to the query if orderBy exists
-    if orderBy?
-      query.orderBy(orderBy.column, orderBy.direction)
+    if orderByObject?
+      query.orderBy(orderByObject.column, orderByObject.direction)
 
     query.then (rows) =>
       # if result is to be translated to Model instances, we need to check
@@ -305,7 +334,11 @@ class BaseDAO
     toObject ?= true
     direct ?= true
 
-    returningArray = translateReturningToDatabase(returning, @config.model, @)
+    try
+      returningArray = @_translateReturningToDatabase(returning)
+    catch error
+      return new Promise (resolve, reject) ->
+        reject error
 
     validationPromise = null
 
@@ -350,8 +383,12 @@ class BaseDAO
 
     # default value of 'toObject' is set to true
     toObject ?= true
-    # default 'returning' array is taken from the Model's DAO configuration
-    returningArray = translateReturningToDatabase(returning, @config.model, @)
+
+    try
+      returningArray = @_translateReturningToDatabase(returning)
+    catch error
+      return new Promise (resolve, reject) ->
+        reject error
 
     # it is necessary to validate and create first object from the data
     # explicity in order to perform validation of further elements
@@ -421,7 +458,11 @@ class BaseDAO
     else if obj? and not (obj instanceof @config.model)
       throw new Error "'obj' attribute passed to #{@constructor.name} 'update()' method should be an instance of #{@config.model.metadata.model}"
 
-    returningArray = translateReturningToDatabase(returning, @config.model, @)
+    try
+      returningArray = @_translateReturningToDatabase(returning)
+    catch error
+      return new Promise (resolve, reject) ->
+        reject error
 
     lookup = {}
     lookup[@config.lookupField] = obj.get @config.lookupField
@@ -443,6 +484,7 @@ class BaseDAO
 
   # delete given instance of the model
   # @param [Any] lookupValue value for the 'lookupField' of the given model which is used in 'where' sql statement
+  # @param [Integer] whoDeleted id of user who performed this operation
   delete: (lookupValue, whoDeleted) ->
     deleteData =
       is_deleted: true
@@ -466,6 +508,51 @@ class BaseDAO
         if @config.errorLogger?
           @config.errorLogger.error error
         throw error
+
+  # delete multiple instances of the model
+  # @param [Array] ids array of ids of model instances to be deleted
+  # @param [Integer] whoDeleted id of user who performed this operation
+  deleteMany: (ids, whoDeleted) ->
+    # check if 'ids' argument is array
+    if not (_.isArray(ids))
+      throw new Error "First argument of 'deleteMany' should be array of IDs"
+
+    deleteData =
+      is_deleted: true
+
+    _.extend deleteData, { 'deleted_at': new Date() }
+    if whoDeleted? and @config.model.metadata.timestamps
+      _.extend deleteData, { 'who_deleted_id': whoDeleted }
+
+    deletedCounter = 0
+    return knex.transaction (trx) =>
+
+      Promise.each ids, (id) =>
+
+        lookup = {}
+        lookup[@config.lookupField] = id
+        lookup['is_deleted'] = false
+
+        return knex(@config.model.metadata.tableName)
+          .where(lookup)
+          .update(deleteData)
+          .transacting(trx)
+          .then (rows) =>
+
+            # if rows === 0 it means that no result was updated (deleted in this case)
+            # so throw an error with appropriate message that specified instance does not exist
+            # rolls back whole transaction
+            if rows is 0
+              throw new Error "'deleteMany()' - #{@config.model.metadata.model} with id = #{id} does not exist!"
+            deletedCounter += 1
+
+    .then (finalResult) ->
+      return finalResult
+    .catch (error) =>
+      if @config.errorLogger?
+        @config.errorLogger.error error
+      throw error
+
 
   getReturning: ->
     @config.returning

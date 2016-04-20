@@ -178,7 +178,6 @@ describe 'ModelView tests', ->
         if error
           return done error
 
-        console.log response.body
         expect(response.body).to.be.an 'array'
         _.each response.body, (user) ->
           expect(user).to.contain.all.keys ['id', 'username']
@@ -238,6 +237,8 @@ describe 'ModelView tests', ->
       .get('/users?fields=username&fields=isDeleted')
       .expect(200)
       .end (error, response) ->
+        if error
+          return done error
 
         expect(response.body).to.be.an 'array'
         expect(response.body[0]).to.have.all.keys ['id', 'username', 'isDeleted']
@@ -250,6 +251,8 @@ describe 'ModelView tests', ->
       .get('/users/1?fields=username')
       .expect(200)
       .end (error, response) ->
+        if error
+          return done error
 
         expect(response.body).to.have.all.keys ['id', 'username']
 
@@ -261,9 +264,10 @@ describe 'ModelView tests', ->
       .get('/users/1?fields=id&fields=test')
       .expect(400)
       .end (error, response) ->
+        if error
+          return done error
 
-        console.log response.body
-        # expect(response.body.statusCode).to.equal 400;
-        # expect(response.body).to.have.property 'message';
+        expect(response.body.statusCode).to.equal 400;
+        expect(response.body).to.have.property 'message';
 
         done()

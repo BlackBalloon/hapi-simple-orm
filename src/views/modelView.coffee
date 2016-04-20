@@ -86,6 +86,15 @@ class ModelView extends BaseView
     # return extended/overwritten route object
     routeObject
 
+  # validate if array of fields passed to the request include timestampAttributes and if they are not allowed
+  # reply 400 bad request with appropriate message
+  # @param [Array] fields array of fields passed as query params
+  _validateReturningFields: (fields, reply) ->
+    returningArray = _.clone fields
+    if not @config.allowTimestampAttributes
+      returningArray = _.difference(fields, _.keys(@config.model::timestampAttributes))
+    return returningArray
+
   # GET - return single instance of Model
   # @param [Boolean] ifSerialize boolean which defines if result should be serialized
   # @param [Object] serializer serializer's Class to be used on the instance
@@ -125,28 +134,26 @@ class ModelView extends BaseView
                 'description': 'Not found'
 
         handler: (request, reply) =>
-          returning = undefined
-          if request.query.fields?
-            if not @config.allowTimestampAttributes?
-              _.each returning, (fieldName) =>
-                if fieldName of @config.model::timestampAttributes
-                  return reply Boom.badRequest("Field #{fieldName} is not attribute of model #{@config.model.metadata.model}")
-            returning = request.query.fields
+          returning = if request.query.fields? then @_validateReturningFields(request.query.fields) else undefined
 
           @config.model.objects().getById({ pk: request.params.id, returning: returning }).then (result) =>
-            if result?
-              if ifSerialize
-                serializerClass = if serializer then serializer else @config.serializer
-                if not serializerClass?
-                  throw new Error "There is no serializer specified for #{@constructor.name}"
+            # if query returned any result and the 'ifSerialize' is set to true
+            # use Serializer to return results
+            if result? and ifSerialize
+              serializerClass = if serializer then serializer else @config.serializer
+              if not serializerClass?
+                throw new Error "There is no serializer specified for #{@constructor.name}"
 
-                serializerInstance = new serializerClass data: result
-                serializerInstance.getData().then (serializerData) ->
-                  return reply serializerData
-              else
-                return reply result
-            else
-              return reply Boom.notFound(@config.errorMessages['notFound'] or "#{@config.model.metadata.model} does not exist")
+              serializerInstance = new serializerClass data: result
+              serializerInstance.getData().then (serializerData) ->
+                reply serializerData
+            # otherwise if result was returned and 'ifSerialize' is false, simply return result
+            else if result? and not ifSerialize
+              reply result
+            # if there is no result, return 404 not found error
+            else if not result?
+              reply Boom.notFound(@config.errorMessages['notFound'] or "#{@config.model.metadata.model} does not exist")
+
           .catch (error) ->
             reply Boom.badRequest error
 
@@ -177,6 +184,9 @@ class ModelView extends BaseView
         validate:
           query:
             fields: Joi.array().items(Joi.string()).single()
+            orderBy: Joi.string()
+            limit: Joi.number().integer().positive()
+            page: Joi.number().integer().positive()
 
         plugins:
           'hapi-swagger':
@@ -190,15 +200,21 @@ class ModelView extends BaseView
                 'description': 'Unauthorized'
 
         handler: (request, reply) =>
-          returning = undefined
-          if request.query.fields?
-            if not @config.allowTimestampAttributes?
-              _.each returning, (fieldName) =>
-                if fieldName of @config.model::timestampAttributes
-                  return reply Boom.badRequest("Field '#{fieldName}' is not attribute of model #{@config.model.metadata.model}")
-            returning = request.query.fields
+          returning = if request.query.fields? then @_validateReturningFields(request.query.fields) else undefined
 
-          @config.model.objects().all({ returning: returning }).then (objects) =>
+          # if query params include both 'limit' and 'page', then we use 'filterPaged' DAO operation
+          if request.query.limit? and request.query.page?
+            daoOperation = @config.model.objects().filterPaged({
+                returning: returning
+                orderBy: request.query.orderBy
+                limit: request.query.limit
+                page: request.query.page
+              })
+          # otherwise we simply perform 'all()'
+          else
+            daoOperation = @config.model.objects().all({ returning: returning })
+
+          daoOperation.then (objects) =>
             if ifSerialize
               serializerClass = if serializer then serializer else @config.serializer
               if not serializerClass?
@@ -207,7 +223,7 @@ class ModelView extends BaseView
               serializerInstance = new serializerClass data: objects, many: true
               serializerInstance.getData().then (serializerData) ->
                 reply serializerData
-            else
+            else if not ifSerialize
               reply objects
           .catch (error) ->
             reply Boom.badRequest error
